@@ -17,6 +17,8 @@ interface DynamicFormState {
   values: FormValues;
   touched: Record<string, boolean>;
   submitAttempted: boolean;
+  /** Last validation result; refreshed on blur and submit rather than on every keystroke. */
+  clientErrors: FieldErrors;
   serverErrors: FieldErrors;
   remoteOptions: Record<string, OptionDto[]>;
   referenceId: string | null;
@@ -29,6 +31,7 @@ const initialState: DynamicFormState = {
   values: {},
   touched: {},
   submitAttempted: false,
+  clientErrors: {},
   serverErrors: {},
   remoteOptions: {},
   referenceId: null,
@@ -37,12 +40,7 @@ const initialState: DynamicFormState = {
 export const DynamicFormStore = signalStore(
   withState(initialState),
   withComputed((store, rules = inject(RulesEngine)) => {
-    const clientErrors = computed(() => {
-      const definition = store.definition();
-      return definition ? rules.validate(definition, store.values()) : {};
-    });
     return {
-      clientErrors,
       visibleSections: computed<SectionDto[]>(() =>
         (store.definition()?.sections ?? [])
           .map((s) => ({ ...s, fields: s.fields.filter((f) => rules.isVisible(f, store.values())) }))
@@ -51,7 +49,7 @@ export const DynamicFormStore = signalStore(
       /** Errors the user should see: client errors once touched/submitted, plus server errors. */
       visibleErrors: computed<FieldErrors>(() => {
         const shown: FieldErrors = {};
-        for (const [key, messages] of Object.entries(clientErrors())) {
+        for (const [key, messages] of Object.entries(store.clientErrors())) {
           if (store.submitAttempted() || store.touched()[key]) shown[key] = messages;
         }
         return { ...shown, ...store.serverErrors() };
@@ -59,6 +57,8 @@ export const DynamicFormStore = signalStore(
     };
   }),
   withMethods((store, api = inject(FormApiClient), notifier = inject(Notifier), rules = inject(RulesEngine), analytics = inject(Analytics)) => {
+    const revalidate = () => patchState(store, { clientErrors: rules.validate(store.definition()!, store.values()) });
+
     const loadOptions = rxMethod<{ fieldKey: string; source: string; parent: string }>(
       mergeMap(({ fieldKey, source, parent }) =>
         api.getOptions(source, parent).pipe(
@@ -101,17 +101,23 @@ export const DynamicFormStore = signalStore(
           patchState(store, { values: { ...store.values(), [field.key]: null } });
           if (value) loadOptions({ fieldKey: field.key, source: field.optionsSource.source, parent: String(value) });
         }
+
+        // Once a field has been left, keep its error in step with what the user types.
+        if (store.touched()[key] || store.submitAttempted()) revalidate();
       },
 
       markTouched(key: string): void {
-        if (!store.touched()[key]) patchState(store, { touched: { ...store.touched(), [key]: true } });
+        if (store.touched()[key]) return;
+        patchState(store, { touched: { ...store.touched(), [key]: true } });
+        revalidate();
       },
 
       submit: rxMethod<void>(
         pipe(
           tap(() => patchState(store, { submitAttempted: true })),
           exhaustMap(() => {
-            const invalid = Object.keys(rules.validate(store.definition()!, store.values()));
+            revalidate();
+            const invalid = Object.keys(store.clientErrors());
             if (invalid.length) {
               notifier.error(`Please fix ${invalid.length} field${invalid.length > 1 ? 's' : ''}`);
               return EMPTY;
