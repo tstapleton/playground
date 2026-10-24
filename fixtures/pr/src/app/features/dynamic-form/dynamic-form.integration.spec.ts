@@ -166,13 +166,13 @@ describe('Dynamic form', () => {
     expect(api.verifyVat).toHaveBeenCalledWith('GB123456789');
   });
 
-  it('blocks submission while required fields are missing', async () => {
+  it('lists what is missing when submitted too early', async () => {
     const { api, notifier, user } = await setup();
 
     await user.type(screen.getByLabelText('Company name'), 'Acme');
     await user.click(screen.getByRole('button', { name: 'Send for approval' }));
 
-    expect(notifier.error).toHaveBeenCalledWith('Please fix 4 fields');
+    expect(notifier.error).toHaveBeenCalledWith('4 fields need your attention');
     expect(screen.getByText('Country is required')).toBeInTheDocument();
     expect(api.submit).not.toHaveBeenCalled();
   });

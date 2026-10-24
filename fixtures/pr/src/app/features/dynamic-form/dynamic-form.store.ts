@@ -158,7 +158,7 @@ export const DynamicFormStore = signalStore(
             revalidate();
             const invalid = Object.keys(store.clientErrors());
             if (invalid.length) {
-              notifier.error(`Please fix ${invalid.length} field${invalid.length > 1 ? 's' : ''}`);
+              notifier.error(`${invalid.length} field${invalid.length > 1 ? 's need' : ' needs'} your attention`);
               return EMPTY;
             }
             patchState(store, { status: 'submitting' });
