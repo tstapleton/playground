@@ -12,5 +12,12 @@
     "@angular/core": ">=20",
     "@ngrx/signals": ">=20",
     "rxjs": "^7.8.0"
+  },
+  "dependencies": {
+    "pele": "^1.9.0",
+    "tsx": "^4.23.15"
+  },
+  "bin": {
+    "signal-trace": "./bin/signal-trace.mjs"
   }
 }

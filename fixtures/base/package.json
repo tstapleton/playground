@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "jest",
-    "test:trace": "TRACE=1 jest"
+    "test:trace": "TRACE=1 jest",
+    "trace:report": "signal-trace report traces --out traces/report"
   },
   "prettier": {
     "printWidth": 100,
