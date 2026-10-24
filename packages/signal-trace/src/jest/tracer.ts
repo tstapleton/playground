@@ -4,15 +4,8 @@ import { getState, StateSource, watchState } from '@ngrx/signals';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { isObservable, Observable } from 'rxjs';
 import { TraceSink } from '../store/with-tracing';
-import { diffState, StateChange, summarize, summarizeArgs } from './summarize';
-
-export type TraceEvent =
-  /** `key` identifies the control and gesture, so repeated keystrokes can be merged. */
-  | { kind: 'user'; to: string; text: string; key: string }
-  | { kind: 'call'; from: string; to: string; label: string }
-  | { kind: 'return'; from: string; to: string; label: string }
-  | { kind: 'throw'; from: string; to: string; label: string }
-  | { kind: 'note'; over: string; changes: StateChange[] };
+import { TraceEvent } from '../core/model';
+import { diffState, summarize, summarizeArgs } from './summarize';
 
 export interface ParticipantOptions {
   /** Only trace these methods. Defaults to every function member. */

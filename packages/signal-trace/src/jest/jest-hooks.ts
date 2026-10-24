@@ -2,12 +2,17 @@ import { ApplicationRef } from '@angular/core';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { recordUserEvents } from './dom-recorder';
-import { toSequenceDiagram } from './mermaid';
+import { toSequenceDiagram } from '../core/mermaid';
+import { TraceFile } from '../core/model';
 import { tracer, tracingEnabled } from './tracer';
 
-export const TRACE_DIR = join(process.cwd(), 'traces');
+/** Where traces go; set TRACE_DIR to keep two runs apart (e.g. base and PR). */
+export const TRACE_DIR = join(process.cwd(), process.env['TRACE_DIR'] ?? 'traces');
 
-/** With TRACE=1, writes one sequence diagram per test to traces/<spec>/<test>.md. */
+/**
+ * With TRACE=1, writes each test's trace to traces/<spec>/<test>.json, plus a Mermaid
+ * sequence diagram of it to <test>.md.
+ */
 export function installTraceHooks(): void {
   if (!tracingEnabled) return;
 
@@ -35,13 +40,15 @@ export function installTraceHooks(): void {
     const spec = basename(testPath).replace(/\.spec\.ts$/, '');
     const dir = join(TRACE_DIR, spec);
     mkdirSync(dir, { recursive: true });
-    const file = join(dir, `${slug(currentTestName)}.md`);
+    const trace: TraceFile = { version: 1, spec: relative(process.cwd(), testPath), test: currentTestName, ui: tracer.uiName, events };
+    const file = join(dir, slug(currentTestName));
+    writeFileSync(`${file}.json`, JSON.stringify(trace, null, 2) + '\n');
     writeFileSync(
-      file,
+      `${file}.md`,
       [
         `# ${currentTestName}`,
         '',
-        `Generated from \`${relative(process.cwd(), testPath)}\` by \`npm run test:trace\`.`,
+        `Generated from \`${trace.spec}\` by \`npm run test:trace\`.`,
         '',
         '```mermaid',
         toSequenceDiagram(events, tracer.uiName),

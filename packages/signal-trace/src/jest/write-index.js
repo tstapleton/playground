@@ -3,7 +3,7 @@ const { existsSync, readdirSync, readFileSync, writeFileSync } = require('node:f
 const { join } = require('node:path');
 
 module.exports = function writeIndex() {
-  const root = join(process.cwd(), 'traces');
+  const root = join(process.cwd(), process.env.TRACE_DIR || 'traces');
   if (!process.env.TRACE || !existsSync(root)) return;
 
   const lines = ['# Traced behaviour', '', 'One sequence diagram per integration test. Regenerate with `npm run test:trace`.', ''];

@@ -1,57 +1,10 @@
-import { describeChange } from './summarize';
-import { TraceEvent } from './tracer';
+import { TraceEvent } from './model';
 
 /**
- * Renders recorded events as a Mermaid sequence diagram.
- *
  * Repeated gestures on the same control (one `setValue` per keystroke) are merged:
  * only the last gesture is kept, plus any earlier message that the last one lacks.
  */
-export function toSequenceDiagram(events: TraceEvent[], uiName: string): string {
-  const merged = mergeRepeatedGestures(events);
-
-  const names: string[] = [];
-  const add = (name: string) => !names.includes(name) && names.push(name);
-  add(uiName);
-  for (const e of merged) {
-    if (e.kind === 'note') add(e.over);
-    else if (e.kind !== 'user') {
-      add(e.from);
-      add(e.to);
-    }
-  }
-  const id = (name: string) => `P${names.indexOf(name)}`;
-
-  const lines = ['sequenceDiagram', '  autonumber'];
-  if (merged.some((e) => e.kind === 'user')) lines.push('  actor U as User');
-  for (const name of names) lines.push(`  participant ${id(name)} as ${escape(name)}`);
-
-  for (const e of merged) {
-    switch (e.kind) {
-      case 'user':
-        lines.push(`  U->>${id(e.to)}: ${escape(e.text)}`);
-        break;
-      case 'call':
-        lines.push(`  ${id(e.from)}->>${id(e.to)}: ${escape(e.label)}`);
-        break;
-      case 'return':
-        lines.push(`  ${id(e.from)}-->>${id(e.to)}: ${escape(e.label)}`);
-        break;
-      case 'throw':
-        lines.push(`  ${id(e.from)}--x${id(e.to)}: ${escape(e.label)}`);
-        break;
-      case 'note': {
-        const shown = e.changes.slice(0, 5).map((c) => escape(describeChange(c)));
-        if (e.changes.length > 5) shown.push(`…${e.changes.length - 5} more`);
-        lines.push(`  Note over ${id(e.over)}: ${shown.join('<br/>')}`);
-        break;
-      }
-    }
-  }
-  return lines.join('\n');
-}
-
-function mergeRepeatedGestures(events: TraceEvent[]): TraceEvent[] {
+export function mergeRepeatedGestures(events: TraceEvent[]): TraceEvent[] {
   // Split into segments that each start with a user gesture.
   const segments: TraceEvent[][] = [[]];
   for (const e of events) {
@@ -85,7 +38,7 @@ function sinceStartOfRun(e: TraceEvent, earlier: TraceEvent[]): TraceEvent {
     ...e,
     changes: e.changes.map((c) => {
       const start = first.changes.find((f) => f.path === c.path);
-      return start ? { ...c, before: start.before } : c;
+      return start ? { ...c, before: start.before, added: start.added } : c;
     }),
   };
 }
@@ -95,7 +48,7 @@ function sameGesture(a: TraceEvent | undefined, b: TraceEvent | undefined): bool
 }
 
 /** What a message is, ignoring the data it carried. */
-function shape(e: TraceEvent): string {
+export function shape(e: TraceEvent): string {
   switch (e.kind) {
     case 'user':
       return `user:${e.key}`;
@@ -106,9 +59,4 @@ function shape(e: TraceEvent): string {
     default:
       return `${e.kind}:${e.from}:${e.to}`;
   }
-}
-
-/** Mermaid treats `;` and `#` specially and `<`/`>` as HTML. */
-function escape(text: string): string {
-  return text.replace(/[#;<>]/g, (c) => ({ '#': '#35;', ';': '#59;', '<': '#lt;', '>': '#gt;' })[c]!);
 }
