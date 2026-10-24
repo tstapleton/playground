@@ -3,7 +3,7 @@ import { isObservable } from 'rxjs';
 import { StateChange } from '../core/model';
 
 /** One-line, size-capped description of a value for a diagram label. */
-export function summarize(value: unknown, depth = 0): string {
+export function summarize(value: unknown, depth = 0, budget = 45): string {
   if (value === undefined) return 'undefined';
   if (value === null) return 'null';
   if (typeof value === 'string') return JSON.stringify(truncate(value, 40));
@@ -18,10 +18,12 @@ export function summarize(value: unknown, depth = 0): string {
   if (typeof value === 'object') {
     const entries = Object.entries(value);
     if (depth > 0) return entries.length ? `{…${entries.length}}` : '{}';
+    // An entity is recognisable by its id alone.
+    if ('id' in value && entries.length > 1) return `{id: ${summarize((value as { id: unknown }).id, 1)}, …}`;
     // Keep whole entries and stop once the label gets long.
     const shown: string[] = [];
     for (const [k, v] of entries) {
-      if (shown.join(', ').length > 45) {
+      if (shown.join(', ').length > budget) {
         shown.push('…');
         break;
       }
@@ -33,7 +35,8 @@ export function summarize(value: unknown, depth = 0): string {
 }
 
 export function summarizeArgs(args: unknown[]): string {
-  return truncate(args.map((a) => summarize(a)).join(', '), 90);
+  const budget = args.length > 1 ? 20 : 45;
+  return truncate(args.map((a) => summarize(a, 0, budget)).join(', '), 90);
 }
 
 /** Changed keys, going one level into plain objects such as `values` or `touched`. */

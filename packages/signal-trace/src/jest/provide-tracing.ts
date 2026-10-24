@@ -6,9 +6,10 @@ import { ParticipantOptions, tracer, tracingEnabled } from './tracer';
  * Registers the trace sink so stores marked with `withTracing()` report to it.
  * Returns no providers unless the run was started with TRACE=1.
  */
-export function provideTracing(options: { ui?: string } = {}): Provider[] {
+export function provideTracing(options: { ui?: string; group?: string } = {}): Provider[] {
   if (!tracingEnabled) return [];
   if (options.ui) tracer.uiName = options.ui;
+  tracer.featureGroup = options.group;
   return [{ provide: TRACE_SINK, useValue: tracer }];
 }
 

@@ -16,6 +16,12 @@ export type TraceEvent =
   | { kind: 'throw'; from: string; to: string; label: string }
   | { kind: 'note'; over: string; changes: StateChange[] };
 
+export interface Participant {
+  name: string;
+  /** Participants sharing a group are drawn inside one box, e.g. "Host app (mocked)". */
+  group?: string;
+}
+
 /** What one test recorded. Written to `traces/<spec>/<test>.json`. */
 export interface TraceFile {
   version: 1;
@@ -25,6 +31,7 @@ export interface TraceFile {
   test: string;
   /** Participant that stands for the components. */
   ui: string;
+  participants: Participant[];
   events: TraceEvent[];
 }
 

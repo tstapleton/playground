@@ -19,8 +19,8 @@ npm run test:trace   # TRACE=1: also writes traces/<spec>/<test>.md
 | Where | What | Why |
 |---|---|---|
 | Store | `withTracing('Form store')`, before `withHooks` | Wraps the store's methods, watches its state and runs its computeds as the store. Does nothing unless the test harness provides `TRACE_SINK`. |
-| Test render helper | `traced('Form API (mock)', { provide: FormApiClient, useValue: api })` | Names a mocked or real service as a participant. `{ methods: [...] }` limits which methods are shown. |
-| Test render helper | `provideTracing({ ui: 'Dynamic form UI' })` | Turns tracing on for the render. |
+| Test render helper | `traced('Form API', { provide: FormApiClient, useValue: api }, { group: 'Host app (mocked)' })` | Names a mocked or real service as a participant. `{ methods: [...] }` limits which methods are shown; `{ group }` draws it inside a titled box. |
+| Test render helper | `provideTracing({ ui: 'UI', group: 'Dynamic form feature' })` | Turns tracing on for the render and names the box for the UI and stores. |
 
 Nothing else changes in the tests. User gestures are picked up from the DOM events that
 `user-event` fires.

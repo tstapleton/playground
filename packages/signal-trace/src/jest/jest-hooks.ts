@@ -40,7 +40,7 @@ export function installTraceHooks(): void {
     const spec = basename(testPath).replace(/\.spec\.ts$/, '');
     const dir = join(TRACE_DIR, spec);
     mkdirSync(dir, { recursive: true });
-    const trace: TraceFile = { version: 1, spec: relative(process.cwd(), testPath), test: currentTestName, ui: tracer.uiName, events };
+    const trace: TraceFile = { version: 1, spec: relative(process.cwd(), testPath), test: currentTestName, ui: tracer.uiName, participants: tracer.participants, events };
     const file = join(dir, slug(currentTestName));
     writeFileSync(`${file}.json`, JSON.stringify(trace, null, 2) + '\n');
     writeFileSync(
@@ -51,7 +51,7 @@ export function installTraceHooks(): void {
         `Generated from \`${trace.spec}\` by \`npm run test:trace\`.`,
         '',
         '```mermaid',
-        toSequenceDiagram(events, tracer.uiName),
+        toSequenceDiagram(trace),
         '```',
         '',
       ].join('\n'),

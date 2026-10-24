@@ -74,6 +74,10 @@ const regions: Record<string, OptionDto[]> = {
   US: [{ value: 'CA', label: 'California' }],
 };
 
+// Diagram boxes: the feature under test, and the mocked host app around it.
+const FEATURE = 'Dynamic form feature';
+const HOST_APP = 'Host app (mocked)';
+
 /** Responds like a real backend would: later, not synchronously. */
 function respond<T>(value: T): Observable<T> {
   return timer(5).pipe(map(() => value));
@@ -92,10 +96,10 @@ async function setup(overrides: Partial<Record<keyof FormApiClient, jest.Mock>> 
     inputs: { formId: 'vendor-onboarding' },
     providers: [
       // Everything outside the feature directory is mocked; `traced` names it in diagrams.
-      traced('Form API (mock)', { provide: FormApiClient, useValue: api }),
-      traced('Notifier (mock)', { provide: Notifier, useValue: notifier }),
-      traced('Rules engine', RulesEngine, { methods: ['validate'] }),
-      provideTracing({ ui: 'Dynamic form UI' }),
+      traced('Form API', { provide: FormApiClient, useValue: api }, { group: HOST_APP }),
+      traced('Notifier', { provide: Notifier, useValue: notifier }, { group: HOST_APP }),
+      traced('Rules engine', RulesEngine, { methods: ['validate'], group: FEATURE }),
+      provideTracing({ ui: 'UI', group: FEATURE }),
     ],
   });
   await screen.findByRole('heading', { name: 'Vendor onboarding' });
@@ -178,12 +182,16 @@ describe('Dynamic form', () => {
     await render(DynamicFormComponent, {
       inputs: { formId: 'vendor-onboarding' },
       providers: [
-        traced('Form API (mock)', {
-          provide: FormApiClient,
-          useValue: { getDefinition: () => timer(5).pipe(map(() => { throw new Error('503 Service Unavailable'); })) },
-        }),
-        traced('Notifier (mock)', { provide: Notifier, useValue: notifier }),
-        provideTracing({ ui: 'Dynamic form UI' }),
+        traced(
+          'Form API',
+          {
+            provide: FormApiClient,
+            useValue: { getDefinition: () => timer(5).pipe(map(() => { throw new Error('503 Service Unavailable'); })) },
+          },
+          { group: HOST_APP },
+        ),
+        traced('Notifier', { provide: Notifier, useValue: notifier }, { group: HOST_APP }),
+        provideTracing({ ui: 'UI', group: FEATURE }),
       ],
     });
 

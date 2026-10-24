@@ -4,10 +4,12 @@ import { getState, StateSource, watchState } from '@ngrx/signals';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { isObservable, Observable } from 'rxjs';
 import { TraceSink } from '../store/with-tracing';
-import { TraceEvent } from '../core/model';
+import { Participant, TraceEvent } from '../core/model';
 import { diffState, summarize, summarizeArgs } from './summarize';
 
 export interface ParticipantOptions {
+  /** Draw it inside a box with this title, e.g. "Host app (mocked)". */
+  group?: string;
   /** Only trace these methods. Defaults to every function member. */
   methods?: string[];
 }
@@ -21,19 +23,29 @@ export interface ParticipantOptions {
  */
 export class Tracer implements TraceSink {
   uiName = 'UI';
+  /** Box for the UI and stores; set with `provideTracing({ group })`. */
+  featureGroup: string | undefined;
   events: TraceEvent[] = [];
+  private readonly groups = new Map<string, string | undefined>();
   private recording = false;
   private readonly context = new AsyncLocalStorage<string>();
 
   start(): void {
     this.events = [];
     this.uiName = 'UI';
+    this.featureGroup = undefined;
+    this.groups.clear();
     this.recording = true;
   }
 
   stop(): TraceEvent[] {
     this.recording = false;
     return this.events;
+  }
+
+  get participants(): Participant[] {
+    const groups = new Map([[this.uiName, this.featureGroup], ...this.groups]);
+    return [...groups].map(([name, group]) => (group ? { name, group } : { name }));
   }
 
   get caller(): string {
@@ -50,6 +62,7 @@ export class Tracer implements TraceSink {
 
   /** Wraps a service instance or mock so calls to its methods are recorded. */
   instrumentObject<T extends object>(name: string, target: T, options: ParticipantOptions = {}): T {
+    this.groups.set(name, options.group);
     const cache = new Map<PropertyKey, unknown>();
     return new Proxy(target, {
       get: (obj, key, receiver) => {
@@ -64,6 +77,7 @@ export class Tracer implements TraceSink {
 
   /** Called by `withTracing()` while a SignalStore is being constructed. */
   instrumentStore<T extends object>(name: string, innerStore: T): T {
+    this.groups.set(name, this.featureGroup);
     const inner = innerStore as T & {
       methods: Record<string, (...args: unknown[]) => unknown>;
       props: Record<string, unknown>;
