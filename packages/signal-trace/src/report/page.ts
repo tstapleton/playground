@@ -39,7 +39,7 @@ const CSS = `
   color-scheme: light dark;
   --bg: #f6f6f4; --surface: #ffffff; --text: #1d1c1a; --muted: #6b6862; --border: #e3e1dc;
   --accent: #2f5bd3; --added: #1f8a3b; --removed: #c2362f; --changed: #a86b00;
-  --added-bg: rgba(46, 160, 67, 0.14); --removed-bg: rgba(218, 54, 51, 0.14); --changed-bg: rgba(212, 167, 44, 0.18);
+  --added-bg: rgba(46, 160, 67, 0.16); --removed-bg: rgba(218, 54, 51, 0.14); --changed-bg: rgba(212, 167, 44, 0.24); --moved-bg: rgba(56, 132, 255, 0.14);
   --pele-bg: var(--surface); --pele-fg: var(--text); --pele-muted: var(--muted); --pele-line: #3a3936;
   --pele-surface: #f4f3ef; --pele-surface-alt: #ebe9e3; --pele-border: #cfccc4; --pele-accent: var(--accent);
   --pele-radius: 6px;
@@ -78,4 +78,22 @@ details pre { margin: 0; padding: 12px 20px 20px; overflow-x: auto; font-size: 1
 .badge.removed { color: var(--removed); background: var(--removed-bg); }
 .badge.changed { color: var(--changed); background: var(--changed-bg); }
 .badge.same { color: var(--muted); background: var(--pele-surface); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0; color: var(--muted); font-size: 13px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+ul.tests { list-style: none; padding: 0; }
+ul.tests li { margin: 4px 0; }
+.counts { color: var(--muted); font-size: 13px; margin-left: 4px; }
+section.test h2 .badge { margin-right: 8px; }
+ul.changes { margin: 0; padding: 4px 20px 16px; list-style: none; font-size: 13px; }
+ul.changes li { padding: 3px 0; overflow-wrap: anywhere; }
+ul.changes .mark { display: inline-block; width: 18px; font-weight: 700; }
+ul.changes .added .mark { color: var(--added); }
+ul.changes .removed .mark { color: var(--removed); }
+ul.changes .changed .mark { color: var(--changed); }
+ul.changes .moved .mark { color: var(--accent); }
+ul.changes .who { color: var(--muted); }
+ul.changes .was { color: var(--muted); }
+.sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 0; }
+.sides > div + div { border-left: 1px solid var(--border); }
+.sides h3 { margin: 12px 20px 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 `;
