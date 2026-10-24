@@ -15,8 +15,3 @@ export function loadTraces(dir: string): TraceFile[] {
   walk(dir);
   return traces.sort((a, b) => a.spec.localeCompare(b.spec) || a.test.localeCompare(b.test));
 }
-
-/** Stable key for matching the same test across two runs. */
-export function traceKey(trace: TraceFile): string {
-  return `${trace.spec} › ${trace.test}`;
-}

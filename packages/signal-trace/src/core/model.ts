@@ -40,3 +40,8 @@ export function describeChange({ path, before, after, added }: StateChange): str
   if (added) return `${path}: + ${after}`;
   return before === undefined ? `${path}: ${after}` : `${path}: ${before} → ${after}`;
 }
+
+/** Stable key for matching the same test across two runs. */
+export function traceKey(trace: TraceFile): string {
+  return `${trace.spec} › ${trace.test}`;
+}

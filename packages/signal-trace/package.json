@@ -19,5 +19,8 @@
   },
   "bin": {
     "signal-trace": "./bin/signal-trace.mjs"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts"
   }
 }
