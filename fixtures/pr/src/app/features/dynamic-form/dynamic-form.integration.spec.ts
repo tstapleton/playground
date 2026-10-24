@@ -200,7 +200,7 @@ describe('Dynamic form', () => {
     });
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This form is unavailable.');
-    expect(notifier.error).toHaveBeenCalledWith('This form could not be loaded');
+    expect(notifier.error).toHaveBeenCalledWith('This form could not be loaded. Please refresh to try again.');
   });
 });
 

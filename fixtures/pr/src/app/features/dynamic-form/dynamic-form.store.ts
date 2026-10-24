@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { EMPTY, catchError, exhaustMap, mergeMap, pipe, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, defer, exhaustMap, mergeMap, pipe, retry, switchMap, tap } from 'rxjs';
 import { Analytics } from '../../shared/analytics/analytics';
 import { FormApiClient, FormDefinitionDto, OptionDto, SectionDto } from '../../shared/api/form-api.client';
 import { Notifier } from '../../shared/notifications/notifier';
@@ -76,14 +76,16 @@ export const DynamicFormStore = signalStore(
         pipe(
           tap((formId) => patchState(store, { formId, status: 'loading' })),
           switchMap((formId) =>
-            api.getDefinition(formId).pipe(
+            // One retry covers a backend that is briefly unavailable after a deploy.
+            defer(() => api.getDefinition(formId)).pipe(
+              retry({ count: 1, delay: 20 }),
               tap((definition) => {
                 patchState(store, { definition, values: rules.initialValues(definition), status: 'ready' });
                 analytics.track('form_viewed', { formId });
               }),
               catchError(() => {
                 patchState(store, { status: 'error' });
-                notifier.error('This form could not be loaded');
+                notifier.error('This form could not be loaded. Please refresh to try again.');
                 return EMPTY;
               }),
             ),
