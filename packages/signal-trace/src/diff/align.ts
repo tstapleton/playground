@@ -15,6 +15,8 @@ export interface TestDiff {
   spec: string;
   test: string;
   status: TestStatus;
+  /** Set when a test with a different name in the base run had mostly the same steps. */
+  renamedFrom?: string;
   base?: TraceFile;
   head?: TraceFile;
   ops: DiffOp[];
@@ -22,12 +24,42 @@ export interface TestDiff {
   participants: { added: string[]; removed: string[] };
 }
 
-/** Pairs tests across two runs by spec and name, and diffs each pair. */
-export function diffRuns(base: TraceFile[], head: TraceFile[]): TestDiff[] {
+/**
+ * Pairs tests across two runs by spec and name, and diffs each pair. A test that only
+ * exists on one side is paired with a same-spec test from the other side when at least
+ * `renameThreshold` of their steps line up, and reported as renamed.
+ */
+export function diffRuns(base: TraceFile[], head: TraceFile[], renameThreshold = 0.6): TestDiff[] {
   const baseByKey = new Map(base.map((t) => [traceKey(t), t]));
   const headByKey = new Map(head.map((t) => [traceKey(t), t]));
-  const keys = [...new Set([...headByKey.keys(), ...baseByKey.keys()])];
-  return keys.map((key) => diffTest(baseByKey.get(key), headByKey.get(key)));
+  const onlyBase = base.filter((t) => !headByKey.has(traceKey(t)));
+  const onlyHead = head.filter((t) => !baseByKey.has(traceKey(t)));
+
+  const renamedTo = new Map<TraceFile, TraceFile>();
+  for (const h of onlyHead) {
+    const candidates = onlyBase.filter((b) => b.spec === h.spec && ![...renamedTo.values()].includes(b));
+    const scored = candidates.map((b) => ({ b, score: similarity(b, h) })).sort((x, y) => y.score - x.score);
+    if (scored[0] && scored[0].score >= renameThreshold) renamedTo.set(h, scored[0].b);
+  }
+  const renamedBases = new Set(renamedTo.values());
+
+  const diffs: TestDiff[] = [];
+  for (const h of head) {
+    const b = baseByKey.get(traceKey(h)) ?? renamedTo.get(h);
+    const d = diffTest(b, h);
+    if (b && b.test !== h.test) d.renamedFrom = b.test;
+    diffs.push(d);
+  }
+  for (const b of onlyBase) if (!renamedBases.has(b)) diffs.push(diffTest(b, undefined));
+  return diffs;
+}
+
+/** Share of steps (by shape) the two tests have in common, from 0 to 1. */
+function similarity(a: TraceFile, b: TraceFile): number {
+  const x = mergeRepeatedGestures(a.events);
+  const y = mergeRepeatedGestures(b.events);
+  const kept = diffEvents(x, y).filter((o) => o.op === 'same' || o.op === 'changed').length;
+  return (2 * kept) / (x.length + y.length || 1);
 }
 
 export function diffTest(base: TraceFile | undefined, head: TraceFile | undefined): TestDiff {

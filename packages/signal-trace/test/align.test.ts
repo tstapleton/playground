@@ -42,4 +42,13 @@ describe('diffRuns', () => {
     assert.equal(byTest['new'].status, 'added');
     assert.equal(byTest['dropped'].status, 'removed');
   });
+
+  it('reports a test whose name changed but steps mostly did not as renamed', () => {
+    const steps = [call('UI', 'Store', 'submit()'), call('Store', 'Rules', 'validate()'), call('Store', 'Notifier', 'error("4 fields")')];
+    const renamed = [...steps.slice(0, 2), call('Store', 'Notifier', 'error("4 fields need attention")')];
+    const [d] = diffRuns([trace('blocks submission', steps)], [trace('lists what is missing', renamed)]);
+    assert.equal(d.status, 'changed');
+    assert.equal(d.renamedFrom, 'blocks submission');
+    assert.deepEqual(d.counts, { added: 0, removed: 0, changed: 1 });
+  });
 });
