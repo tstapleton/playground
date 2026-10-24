@@ -61,7 +61,7 @@ export const DynamicFormStore = signalStore(
 
     const loadOptions = rxMethod<{ fieldKey: string; source: string; parent: string }>(
       mergeMap(({ fieldKey, source, parent }) =>
-        api.getOptions(source, parent).pipe(
+        api.getOptions(source, { parent, locale: navigator.language }).pipe(
           tap((options) => patchState(store, { remoteOptions: { ...store.remoteOptions(), [fieldKey]: options } })),
           catchError(() => {
             notifier.error('Could not load options');

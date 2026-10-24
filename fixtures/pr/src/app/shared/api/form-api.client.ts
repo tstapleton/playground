@@ -52,8 +52,8 @@ export class FormApiClient {
     return this.http.get<FormDefinitionDto>(`/api/forms/${formId}`);
   }
 
-  getOptions(source: string, parent: string): Observable<OptionDto[]> {
-    return this.http.get<OptionDto[]>(`/api/options/${source}`, { params: { parent } });
+  getOptions(source: string, query: { parent: string; locale: string }): Observable<OptionDto[]> {
+    return this.http.get<OptionDto[]>(`/api/options/${source}`, { params: query });
   }
 
   submit(formId: string, values: Record<string, unknown>): Observable<SubmitResultDto> {
