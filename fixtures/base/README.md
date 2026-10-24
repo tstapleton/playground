@@ -1,52 +1,16 @@
-# form-trace
+# fixture-base
 
-Generates **sequence diagrams from integration test runs**. A Jest + Testing Library suite
-renders the whole feature, with everything outside the feature mocked, and records who
-called whom, with what data, and how store state changed. Each test writes one Mermaid
-diagram to [`traces/`](traces/README.md).
+Demo feature for [signal-trace](../../packages/signal-trace): a form whose fields, rules
+and sections come from backend configuration. It uses Angular 20 (zoneless), NgRx
+SignalStore and Jest with Testing Library.
 
-The demo feature is a config-driven form (Angular 20, zoneless, NgRx SignalStore): the
-backend sends the field definitions; the store handles loading, conditional fields,
-dependent selects, validation and submit.
+The integration tests in `src/app/features/dynamic-form` render the whole feature and
+mock everything outside it (`src/app/shared`).
 
 ```bash
-npm test             # normal run, tracing off (no providers added, no overhead)
-npm run test:trace   # TRACE=1: also writes traces/<spec>/<test>.md
+npm test               # normal run
+npm run test:trace     # also writes traces/<spec>/<test>.json and .md
+npm run trace:report   # renders them to traces/report/index.html with Pele
 ```
 
-## What you add
-
-| Where | What | Why |
-|---|---|---|
-| Store | `withTracing('Form store')`, before `withHooks` | Wraps the store's methods, watches its state and runs its computeds as the store. Does nothing unless the test harness provides `TRACE_SINK`. |
-| Test render helper | `traced('Form API', { provide: FormApiClient, useValue: api }, { group: 'Host app (mocked)' })` | Names a mocked or real service as a participant. `{ methods: [...] }` limits which methods are shown; `{ group }` draws it inside a titled box. |
-| Test render helper | `provideTracing({ ui: 'UI', group: 'Dynamic form feature' })` | Turns tracing on for the render and names the box for the UI and stores. |
-
-Nothing else changes in the tests. User gestures are picked up from the DOM events that
-`user-event` fires.
-
-## How it works (`packages/signal-trace`)
-
-- **Participants.** Store methods and the methods of `traced` services are wrapped.
-  A call between two participants becomes `A ->> B: method(args)`. Its result becomes a
-  return arrow. For an Observable, each emission becomes a return arrow; for a Promise,
-  the resolved value does.
-- **Who is calling.** The current participant is kept in Node's `AsyncLocalStorage`.
-  Work that continues after a timer, an observable emission or an `await` is still
-  attributed correctly. Code outside any participant (DOM handlers, change detection) is
-  the UI. Calls a participant makes to itself are left out, so the diagram shows boundaries only.
-- **State.** `watchState` sends each `patchState` as a note of what changed
-  (`status: "loading" → "ready"`).
-- **User.** Capture-phase DOM listeners turn input, change and click events into
-  `User ->> UI` messages. Repeated keystrokes on the same field are merged into one step.
-
-## Known limits
-
-- The diagram shows one run, the path this test took. It is not every possible path.
-- `withTracing` must come after the features it should cover and before `withHooks`.
-- Computeds the store doesn't expose are evaluated in their reader's context. Calls they
-  make can show up as coming from the UI.
-- Effects or timers driven by Jest fake timers run in the test's context, so they are
-  attributed to the UI.
-- Patching computeds relies on Angular's internal signal node (`SIGNAL`). That's
-  acceptable in test-only code, but it can break on an Angular upgrade.
+This is the "base" side of the demo diff; [`fixtures/pr`](../pr) is the "PR" side.
