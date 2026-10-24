@@ -22,6 +22,8 @@ export interface FieldDto {
   options?: OptionDto[];
   /** Options fetched from the backend whenever `dependsOn` changes. */
   optionsSource?: { source: string; dependsOn: string };
+  /** Checked against an external registry when the user leaves the field. */
+  verify?: 'vat';
   /** Only shown (and validated) while another field has this value. */
   visibleWhen?: { field: string; equals: unknown };
 }
@@ -39,6 +41,11 @@ export interface FormDefinitionDto {
   sections: SectionDto[];
 }
 
+export interface VatCheckDto {
+  valid: boolean;
+  registeredName?: string;
+}
+
 export type SubmitResultDto =
   | { ok: true; referenceId: string }
   | { ok: false; fieldErrors: Record<string, string[]> };
@@ -54,6 +61,10 @@ export class FormApiClient {
 
   getOptions(source: string, query: { parent: string; locale: string }): Observable<OptionDto[]> {
     return this.http.get<OptionDto[]>(`/api/options/${source}`, { params: query });
+  }
+
+  verifyVat(vatNumber: string): Observable<VatCheckDto> {
+    return this.http.get<VatCheckDto>(`/api/registry/vat/${encodeURIComponent(vatNumber)}`);
   }
 
   submit(formId: string, values: Record<string, unknown>): Observable<SubmitResultDto> {

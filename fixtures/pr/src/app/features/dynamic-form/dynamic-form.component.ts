@@ -35,6 +35,7 @@ import { FieldComponent } from './field.component';
                   [value]="store.values()[field.key]"
                   [options]="optionsFor(field)"
                   [error]="store.visibleErrors()[field.key]?.[0]"
+                  [hint]="hintFor(field.key)"
                   (valueChange)="store.setValue(field.key, $event)"
                   (blurred)="store.markTouched(field.key)"
                 />
@@ -59,6 +60,13 @@ export class DynamicFormComponent implements OnInit {
 
   protected optionsFor(field: FieldDto): OptionDto[] {
     return field.options ?? this.store.remoteOptions()[field.key] ?? [];
+  }
+
+  protected hintFor(key: string): string | undefined {
+    const check = this.store.verifications()[key];
+    if (check?.status === 'checking') return 'Checking the registry…';
+    if (check?.status === 'valid') return `Registered to ${check.detail}`;
+    return undefined;
   }
 
   protected onSubmit(event: Event): void {

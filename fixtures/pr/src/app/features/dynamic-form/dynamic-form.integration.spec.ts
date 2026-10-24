@@ -53,6 +53,13 @@ const vendorOnboarding: FormDefinitionDto = {
             { value: 'US', label: 'United States' },
           ],
         },
+        {
+          key: 'vatNumber',
+          label: 'VAT number',
+          type: 'text',
+          verify: 'vat',
+          visibleWhen: { field: 'country', equals: 'GB' },
+        },
         { key: 'region', label: 'Region', type: 'select', required: true, optionsSource: { source: 'regions', dependsOn: 'country' } },
       ],
     },
@@ -88,6 +95,7 @@ async function setup(overrides: Partial<Record<keyof FormApiClient, jest.Mock>> 
   const api = {
     getDefinition: jest.fn(() => respond(vendorOnboarding)),
     getOptions: jest.fn((_source: string, { parent }: { parent: string }) => respond(regions[parent] ?? [])),
+    verifyVat: jest.fn((vat: string) => respond(vat === 'GB123456789' ? { valid: true, registeredName: 'ACME LTD' } : { valid: false })),
     submit: jest.fn((): Observable<SubmitResultDto> => respond({ ok: true, referenceId: 'VND-1042' })),
     ...overrides,
   };
@@ -145,6 +153,17 @@ describe('Dynamic form', () => {
 
     expect(await screen.findByRole('option', { name: 'California' })).toBeInTheDocument();
     expect(api.getOptions).toHaveBeenCalledWith('regions', { parent: 'US', locale: 'en-US' });
+  });
+
+  it('checks a UK VAT number against the registry when the field is left', async () => {
+    const { api, user } = await setup();
+
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom');
+    await user.type(screen.getByLabelText('VAT number'), 'GB123456789');
+    await user.tab();
+
+    expect(await screen.findByText('Registered to ACME LTD')).toBeInTheDocument();
+    expect(api.verifyVat).toHaveBeenCalledWith('GB123456789');
   });
 
   it('blocks submission while required fields are missing', async () => {

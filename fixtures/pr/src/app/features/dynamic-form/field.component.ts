@@ -50,6 +50,9 @@ import { FieldDto, OptionDto } from '../../shared/api/form-api.client';
           />
         }
       }
+      @if (hint(); as text) {
+        <p class="hint">{{ text }}</p>
+      }
       @if (error(); as message) {
         <p class="error" [id]="errorId()">{{ message }}</p>
       }
@@ -61,6 +64,7 @@ export class FieldComponent {
   readonly value = input<unknown>(null);
   readonly options = input<OptionDto[]>([]);
   readonly error = input<string | undefined>();
+  readonly hint = input<string | undefined>();
 
   readonly valueChange = output<unknown>();
   readonly blurred = output<void>();

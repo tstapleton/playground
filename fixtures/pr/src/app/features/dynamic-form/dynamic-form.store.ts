@@ -21,7 +21,15 @@ interface DynamicFormState {
   clientErrors: FieldErrors;
   serverErrors: FieldErrors;
   remoteOptions: Record<string, OptionDto[]>;
+  /** Registry checks, keyed by field; `value` is what was checked. */
+  verifications: Record<string, Verification>;
   referenceId: string | null;
+}
+
+export interface Verification {
+  value: string;
+  status: 'checking' | 'valid' | 'invalid';
+  detail?: string;
 }
 
 const initialState: DynamicFormState = {
@@ -34,6 +42,7 @@ const initialState: DynamicFormState = {
   clientErrors: {},
   serverErrors: {},
   remoteOptions: {},
+  verifications: {},
   referenceId: null,
 };
 
@@ -52,12 +61,33 @@ export const DynamicFormStore = signalStore(
         for (const [key, messages] of Object.entries(store.clientErrors())) {
           if (store.submitAttempted() || store.touched()[key]) shown[key] = messages;
         }
+        for (const [key, check] of Object.entries(store.verifications())) {
+          if (check.status === 'invalid') shown[key] = ['Not found in the VAT registry'];
+        }
         return { ...shown, ...store.serverErrors() };
       }),
     };
   }),
   withMethods((store, api = inject(FormApiClient), notifier = inject(Notifier), rules = inject(RulesEngine), analytics = inject(Analytics)) => {
     const revalidate = () => patchState(store, { clientErrors: rules.validate(store.definition()!, store.values()) });
+
+    const setVerification = (key: string, verification: Verification) =>
+      patchState(store, { verifications: { ...store.verifications(), [key]: verification } });
+
+    const verifyVat = rxMethod<{ key: string; value: string }>(
+      switchMap(({ key, value }) => {
+        setVerification(key, { value, status: 'checking' });
+        return api.verifyVat(value).pipe(
+          tap((check) =>
+            setVerification(key, check.valid ? { value, status: 'valid', detail: check.registeredName } : { value, status: 'invalid' }),
+          ),
+          catchError(() => {
+            setVerification(key, { value, status: 'invalid', detail: 'Registry unavailable' });
+            return EMPTY;
+          }),
+        );
+      }),
+    );
 
     const loadOptions = rxMethod<{ fieldKey: string; source: string; parent: string }>(
       mergeMap(({ fieldKey, source, parent }) =>
@@ -109,9 +139,16 @@ export const DynamicFormStore = signalStore(
       },
 
       markTouched(key: string): void {
-        if (store.touched()[key]) return;
-        patchState(store, { touched: { ...store.touched(), [key]: true } });
-        revalidate();
+        if (!store.touched()[key]) {
+          patchState(store, { touched: { ...store.touched(), [key]: true } });
+          revalidate();
+        }
+
+        const field = allFields(store.definition()!).find((f) => f.key === key);
+        const value = store.values()[key];
+        if (field?.verify === 'vat' && typeof value === 'string' && value && store.verifications()[key]?.value !== value) {
+          verifyVat({ key, value });
+        }
       },
 
       submit: rxMethod<void>(
