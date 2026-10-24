@@ -35,9 +35,8 @@ export interface TraceFile {
   events: TraceEvent[];
 }
 
-export function describeChange({ path, before, after, added }: StateChange): string {
+export function describeChange({ path, before, after }: StateChange): string {
   if (after === undefined) return `${path}: removed`;
-  if (added) return `${path}: + ${after}`;
   return before === undefined ? `${path}: ${after}` : `${path}: ${before} → ${after}`;
 }
 

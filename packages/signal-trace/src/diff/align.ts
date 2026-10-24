@@ -6,7 +6,9 @@ export type DiffOp =
   | { op: 'added'; event: TraceEvent }
   | { op: 'removed'; event: TraceEvent }
   /** Same participants and method (or state keys) as before, different data. */
-  | { op: 'changed'; event: TraceEvent; before: TraceEvent };
+  | { op: 'changed'; event: TraceEvent; before: TraceEvent }
+  /** Identical message that now happens at a different point within the same gesture. */
+  | { op: 'moved'; event: TraceEvent };
 
 export type TestStatus = 'added' | 'removed' | 'changed' | 'unchanged';
 
@@ -20,7 +22,7 @@ export interface TestDiff {
   base?: TraceFile;
   head?: TraceFile;
   ops: DiffOp[];
-  counts: { added: number; removed: number; changed: number };
+  counts: { added: number; removed: number; changed: number; moved: number };
   participants: { added: string[]; removed: string[] };
 }
 
@@ -65,7 +67,7 @@ function similarity(a: TraceFile, b: TraceFile): number {
 export function diffTest(base: TraceFile | undefined, head: TraceFile | undefined): TestDiff {
   const either = (head ?? base)!;
   const ops = diffEvents(base ? mergeRepeatedGestures(base.events) : [], head ? mergeRepeatedGestures(head.events) : []);
-  const counts = { added: 0, removed: 0, changed: 0 };
+  const counts = { added: 0, removed: 0, changed: 0, moved: 0 };
   for (const o of ops) if (o.op !== 'same') counts[o.op]++;
 
   const before = new Set(base ? namesIn(base) : []);
@@ -112,7 +114,7 @@ export function diffEvents(base: TraceEvent[], head: TraceEvent[]): DiffOp[] {
     }
   }
 
-  const ops: DiffOp[] = [];
+  let ops: DiffOp[] = [];
   let i = 0;
   let j = 0;
   while (i < n || j < m) {
@@ -127,7 +129,27 @@ export function diffEvents(base: TraceEvent[], head: TraceEvent[]): DiffOp[] {
       ops.push({ op: 'removed', event: base[i++] });
     }
   }
-  return ops;
+  return detectMoves(ops);
+}
+
+/**
+ * An identical message removed in one place and added in another, with no unchanged
+ * user gesture in between, is one message that moved: keep it once, where it is now.
+ */
+function detectMoves(ops: DiffOp[]): DiffOp[] {
+  const gesture = (index: number) => ops.slice(0, index).filter((o) => o.op === 'same' && o.event.kind === 'user').length;
+  const dropped = new Set<number>();
+  const result = [...ops];
+  ops.forEach((o, i) => {
+    if (o.op !== 'added') return;
+    const match = ops.findIndex(
+      (r, j) => r.op === 'removed' && !dropped.has(j) && shape(r.event) === shape(o.event) && textOf(r.event) === textOf(o.event) && gesture(j) === gesture(i),
+    );
+    if (match < 0) return;
+    dropped.add(match);
+    result[i] = { op: 'moved', event: o.event };
+  });
+  return result.filter((_, i) => !dropped.has(i));
 }
 
 /** Everything a reader sees for an event, used to decide "same" vs "changed". */

@@ -25,6 +25,12 @@ describe('diffEvents', () => {
     assert.deepEqual(diffEvents(base, head).map((o) => o.op), ['same', 'added', 'removed', 'same', 'added']);
   });
 
+  it('reports a message that happens earlier within the same gesture as moved', () => {
+    const base = [call('UI', 'Store', 'setValue("a")'), call('Store', 'Rules', 'validate()'), call('UI', 'Store', 'markTouched("a")')];
+    const head = [call('UI', 'Store', 'setValue("a")'), call('UI', 'Store', 'markTouched("a")'), call('Store', 'Rules', 'validate()')];
+    assert.deepEqual(diffEvents(base, head).map((o) => o.op), ['same', 'moved', 'same']);
+  });
+
   it('prefers exact matches over same-shaped ones', () => {
     const base = [call('UI', 'Store', 'setValue("a")'), call('UI', 'Store', 'setValue("b")')];
     const head = [call('UI', 'Store', 'setValue("b")')];
@@ -49,6 +55,6 @@ describe('diffRuns', () => {
     const [d] = diffRuns([trace('blocks submission', steps)], [trace('lists what is missing', renamed)]);
     assert.equal(d.status, 'changed');
     assert.equal(d.renamedFrom, 'blocks submission');
-    assert.deepEqual(d.counts, { added: 0, removed: 0, changed: 1 });
+    assert.deepEqual(d.counts, { added: 0, removed: 0, changed: 1, moved: 0 });
   });
 });
