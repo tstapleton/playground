@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/angular';
 import userEvent from '@testing-library/user-event';
 import { Observable, map, timer } from 'rxjs';
+import { Analytics } from '../../shared/analytics/analytics';
 import { FormApiClient, FormDefinitionDto, OptionDto, SubmitResultDto } from '../../shared/api/form-api.client';
 import { Notifier } from '../../shared/notifications/notifier';
 import { provideTracing, traced } from 'signal-trace/jest';
@@ -91,6 +92,7 @@ async function setup(overrides: Partial<Record<keyof FormApiClient, jest.Mock>> 
     ...overrides,
   };
   const notifier = { success: jest.fn(), error: jest.fn() };
+  const analytics = { track: jest.fn() };
 
   await render(DynamicFormComponent, {
     inputs: { formId: 'vendor-onboarding' },
@@ -98,13 +100,14 @@ async function setup(overrides: Partial<Record<keyof FormApiClient, jest.Mock>> 
       // Everything outside the feature directory is mocked; `traced` names it in diagrams.
       traced('Form API', { provide: FormApiClient, useValue: api }, { group: HOST_APP }),
       traced('Notifier', { provide: Notifier, useValue: notifier }, { group: HOST_APP }),
+      traced('Analytics', { provide: Analytics, useValue: analytics }, { group: HOST_APP }),
       traced('Rules engine', RulesEngine, { methods: ['validate'], group: FEATURE }),
       provideTracing({ ui: 'UI', group: FEATURE }),
     ],
   });
   await screen.findByRole('heading', { name: 'Vendor onboarding' });
 
-  return { api, notifier, user: userEvent.setup() };
+  return { api, notifier, analytics, user: userEvent.setup() };
 }
 
 async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
@@ -167,7 +170,7 @@ describe('Dynamic form', () => {
   });
 
   it('submits a valid form and shows the reference', async () => {
-    const { api, notifier, user } = await setup();
+    const { api, notifier, analytics, user } = await setup();
 
     await fillValidForm(user);
     await user.click(screen.getByRole('button', { name: 'Send for approval' }));
@@ -175,6 +178,7 @@ describe('Dynamic form', () => {
     expect(await screen.findByText('Thanks! Your reference is VND-1042.')).toBeInTheDocument();
     expect(api.submit).toHaveBeenCalledWith('vendor-onboarding', expect.objectContaining({ companyName: 'Acme', region: 'SCT' }));
     expect(notifier.success).toHaveBeenCalledWith('Submitted (VND-1042)');
+    expect(analytics.track).toHaveBeenCalledWith('form_submitted', { formId: 'vendor-onboarding', referenceId: 'VND-1042' });
   });
 
   it('tells the user when the form cannot be loaded', async () => {

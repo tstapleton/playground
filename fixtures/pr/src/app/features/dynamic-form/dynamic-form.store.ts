@@ -2,6 +2,7 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, mergeMap, pipe, switchMap, tap } from 'rxjs';
+import { Analytics } from '../../shared/analytics/analytics';
 import { FormApiClient, FormDefinitionDto, OptionDto, SectionDto } from '../../shared/api/form-api.client';
 import { Notifier } from '../../shared/notifications/notifier';
 import { withTracing } from 'signal-trace/store';
@@ -57,7 +58,7 @@ export const DynamicFormStore = signalStore(
       }),
     };
   }),
-  withMethods((store, api = inject(FormApiClient), notifier = inject(Notifier), rules = inject(RulesEngine)) => {
+  withMethods((store, api = inject(FormApiClient), notifier = inject(Notifier), rules = inject(RulesEngine), analytics = inject(Analytics)) => {
     const loadOptions = rxMethod<{ fieldKey: string; source: string; parent: string }>(
       mergeMap(({ fieldKey, source, parent }) =>
         api.getOptions(source, parent).pipe(
@@ -76,9 +77,10 @@ export const DynamicFormStore = signalStore(
           tap((formId) => patchState(store, { formId, status: 'loading' })),
           switchMap((formId) =>
             api.getDefinition(formId).pipe(
-              tap((definition) =>
-                patchState(store, { definition, values: rules.initialValues(definition), status: 'ready' }),
-              ),
+              tap((definition) => {
+                patchState(store, { definition, values: rules.initialValues(definition), status: 'ready' });
+                analytics.track('form_viewed', { formId });
+              }),
               catchError(() => {
                 patchState(store, { status: 'error' });
                 notifier.error('This form could not be loaded');
@@ -120,9 +122,11 @@ export const DynamicFormStore = signalStore(
                 if (result.ok) {
                   patchState(store, { status: 'submitted', referenceId: result.referenceId });
                   notifier.success(`Submitted (${result.referenceId})`);
+                  analytics.track('form_submitted', { formId: store.formId(), referenceId: result.referenceId });
                 } else {
                   patchState(store, { status: 'ready', serverErrors: result.fieldErrors });
                   notifier.error('The server rejected some answers');
+                  analytics.track('form_rejected', { formId: store.formId(), fields: Object.keys(result.fieldErrors) });
                 }
               }),
               catchError(() => {
