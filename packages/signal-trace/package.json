@@ -1,0 +1,16 @@
+{
+  "name": "signal-trace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sequence diagrams of NgRx SignalStore features, recorded from integration test runs.",
+  "exports": {
+    "./store": "./src/store/with-tracing.ts",
+    "./jest": "./src/jest/index.ts",
+    "./jest/global-teardown": "./src/jest/write-index.js"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=20",
+    "@ngrx/signals": ">=20",
+    "rxjs": "^7.8.0"
+  }
+}

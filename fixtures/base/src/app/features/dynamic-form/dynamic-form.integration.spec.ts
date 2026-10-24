@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Observable, map, timer } from 'rxjs';
 import { FormApiClient, FormDefinitionDto, OptionDto, SubmitResultDto } from '../../shared/api/form-api.client';
 import { Notifier } from '../../shared/notifications/notifier';
-import { provideTracing, traced } from '../../../testing/trace/provide-tracing';
+import { provideTracing, traced } from 'signal-trace/jest';
 import { DynamicFormComponent } from './dynamic-form.component';
 import { RulesEngine } from './rules-engine';
 

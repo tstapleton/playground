@@ -4,7 +4,7 @@ import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { EMPTY, catchError, exhaustMap, mergeMap, pipe, switchMap, tap } from 'rxjs';
 import { FormApiClient, FormDefinitionDto, OptionDto, SectionDto } from '../../shared/api/form-api.client';
 import { Notifier } from '../../shared/notifications/notifier';
-import { withTracing } from '../../shared/tracing/with-tracing';
+import { withTracing } from 'signal-trace/store';
 import { FieldErrors, FormValues, RulesEngine, allFields } from './rules-engine';
 
 export type FormStatus = 'idle' | 'loading' | 'ready' | 'submitting' | 'submitted' | 'error';

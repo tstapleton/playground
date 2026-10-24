@@ -25,7 +25,7 @@ npm run test:trace   # TRACE=1: also writes traces/<spec>/<test>.md
 Nothing else changes in the tests. User gestures are picked up from the DOM events that
 `user-event` fires.
 
-## How it works (`src/testing/trace`)
+## How it works (`packages/signal-trace`)
 
 - **Participants.** Store methods and the methods of `traced` services are wrapped.
   A call between two participants becomes `A ->> B: method(args)`. Its result becomes a

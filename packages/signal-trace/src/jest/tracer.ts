@@ -3,7 +3,7 @@ import { SIGNAL } from '@angular/core/primitives/signals';
 import { getState, StateSource, watchState } from '@ngrx/signals';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { isObservable, Observable } from 'rxjs';
-import { TraceSink } from '../../app/shared/tracing/with-tracing';
+import { TraceSink } from '../store/with-tracing';
 import { diffState, StateChange, summarize, summarizeArgs } from './summarize';
 
 export type TraceEvent =

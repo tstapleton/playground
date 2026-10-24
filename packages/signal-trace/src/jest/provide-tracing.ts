@@ -1,5 +1,5 @@
 import { ClassProvider, FactoryProvider, Provider, Type, ValueProvider, inject } from '@angular/core';
-import { TRACE_SINK } from '../../app/shared/tracing/with-tracing';
+import { TRACE_SINK } from '../store/with-tracing';
 import { ParticipantOptions, tracer, tracingEnabled } from './tracer';
 
 /**
