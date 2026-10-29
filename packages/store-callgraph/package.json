@@ -1,0 +1,33 @@
+{
+  "name": "store-callgraph",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Static call graphs of an Angular feature built on NgRx SignalStore, and diffs between two revisions.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "store-callgraph": "./bin/store-callgraph.mjs"
+  },
+  "peerDependencies": {
+    "@angular/compiler": ">=20",
+    "typescript": ">=5.8 <6"
+  },
+  "dependencies": {
+    "pele": "^1.9.0",
+    "tsx": "^4.23.15"
+  },
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@angular/compiler": "^20.3.0",
+    "@angular/core": "^20.3.0",
+    "@ngrx/signals": "^20.1.0",
+    "@types/node": "^22.0.0",
+    "rxjs": "~7.8.0",
+    "typescript": "~5.9.2"
+  }
+}

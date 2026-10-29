@@ -1,0 +1,12 @@
+export { diffDiagrams, diffGraphs, graphDiagrams, graphOf } from './api';
+export type { AnalyzeOptions, Source } from './api';
+export type { ChangeClass, EdgeChange, GraphDiff, NodeChange } from './diff/diff';
+export { extract } from './extract/extract';
+export type { ExtractOptions, ExtractResult } from './extract/extract';
+export { serialize } from './graph/canonical';
+export type { CallSite, Graph, GraphEdge, GraphNode } from './graph/model';
+export { DEFAULT_SLICE } from './graph/slice';
+export type { SliceOptions, View } from './graph/slice';
+export { diffPage, graphPage } from './render/html';
+export { DEFAULT_COMMENT, diffComment } from './render/markdown';
+export { mermaid } from './render/mermaid';

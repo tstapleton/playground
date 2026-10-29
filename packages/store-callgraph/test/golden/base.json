@@ -1,0 +1,959 @@
+{
+  "version": 1,
+  "inputs": {
+    "feature": "src/app/features/dynamic-form",
+    "analyzer": "store-callgraph@0.0.0 typescript@5.9.3 @angular/compiler@20.3.34 graph@1"
+  },
+  "nodes": [
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent.ngOnInit",
+      "kind": "class-method",
+      "name": "DynamicFormComponent.ngOnInit",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 56,
+      "group": "DynamicFormComponent",
+      "signature": "() => void",
+      "fingerprint": "a4ac0ffe6240d0d6",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent.onSubmit",
+      "kind": "class-method",
+      "name": "DynamicFormComponent.onSubmit",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 64,
+      "group": "DynamicFormComponent",
+      "signature": "(event: Event) => void",
+      "fingerprint": "10616e9d5ef23898",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent.optionsFor",
+      "kind": "class-method",
+      "name": "DynamicFormComponent.optionsFor",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 60,
+      "group": "DynamicFormComponent",
+      "signature": "(field: FieldDto) => OptionDto[]",
+      "fingerprint": "5cd002c05ac526e5",
+      "reads": [
+        "DynamicFormStore.remoteOptions"
+      ],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent@template",
+      "kind": "template-render",
+      "name": "DynamicFormComponent template",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 12,
+      "group": "DynamicFormComponent",
+      "signature": "",
+      "fingerprint": "0f06e4b7c3552392",
+      "reads": [
+        "DynamicFormStore.definition",
+        "DynamicFormStore.referenceId",
+        "DynamicFormStore.status",
+        "DynamicFormStore.values"
+      ],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(blurred)",
+      "kind": "template-handler",
+      "name": "DynamicFormComponent app-field(blurred)",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 39,
+      "group": "DynamicFormComponent",
+      "signature": "",
+      "fingerprint": "aebb136291bf92ab",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(valueChange)",
+      "kind": "template-handler",
+      "name": "DynamicFormComponent app-field(valueChange)",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 38,
+      "group": "DynamicFormComponent",
+      "signature": "",
+      "fingerprint": "c51fe93e84f96fea",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.component.ts#DynamicFormComponent@template:form(submit)",
+      "kind": "template-handler",
+      "name": "DynamicFormComponent form(submit)",
+      "file": "src/app/features/dynamic-form/dynamic-form.component.ts",
+      "line": 27,
+      "group": "DynamicFormComponent",
+      "signature": "",
+      "fingerprint": "fad0bd0f390dac99",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.(loadOptions)",
+      "kind": "store-helper",
+      "name": "DynamicFormStore.(loadOptions)",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 61,
+      "group": "DynamicFormStore",
+      "signature": "RxMethod<{ fieldKey: string; source: string; parent: string; }>",
+      "fingerprint": "e9bef22ec1d0e494",
+      "reads": [
+        "DynamicFormStore.remoteOptions"
+      ],
+      "writes": [
+        "remoteOptions"
+      ]
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.clientErrors",
+      "kind": "store-computed",
+      "name": "DynamicFormStore.clientErrors",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 39,
+      "group": "DynamicFormStore",
+      "signature": "Signal<FieldErrors>",
+      "fingerprint": "893b911838b5ed7b",
+      "reads": [
+        "DynamicFormStore.definition",
+        "DynamicFormStore.values"
+      ],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.load",
+      "kind": "store-method",
+      "name": "DynamicFormStore.load",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 74,
+      "group": "DynamicFormStore",
+      "signature": "RxMethod<string>",
+      "fingerprint": "1c86ec823668cd7c",
+      "reads": [],
+      "writes": [
+        "definition",
+        "formId",
+        "status",
+        "values"
+      ]
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.markTouched",
+      "kind": "store-method",
+      "name": "DynamicFormStore.markTouched",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 104,
+      "group": "DynamicFormStore",
+      "signature": "(key: string) => void",
+      "fingerprint": "c4a026975bd7ffee",
+      "reads": [
+        "DynamicFormStore.touched"
+      ],
+      "writes": [
+        "touched"
+      ]
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.setValue",
+      "kind": "store-method",
+      "name": "DynamicFormStore.setValue",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 92,
+      "group": "DynamicFormStore",
+      "signature": "(key: string, value: unknown) => void",
+      "fingerprint": "ac07961219275f22",
+      "reads": [
+        "DynamicFormStore.definition",
+        "DynamicFormStore.serverErrors",
+        "DynamicFormStore.values"
+      ],
+      "writes": [
+        "serverErrors",
+        "values"
+      ]
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "kind": "store-method",
+      "name": "DynamicFormStore.submit",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 108,
+      "group": "DynamicFormStore",
+      "signature": "RxMethod<void>",
+      "fingerprint": "f049ca5425b93c19",
+      "reads": [
+        "DynamicFormStore.definition",
+        "DynamicFormStore.formId",
+        "DynamicFormStore.values"
+      ],
+      "writes": [
+        "referenceId",
+        "serverErrors",
+        "status",
+        "submitAttempted"
+      ]
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.visibleErrors",
+      "kind": "store-computed",
+      "name": "DynamicFormStore.visibleErrors",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 51,
+      "group": "DynamicFormStore",
+      "signature": "Signal<FieldErrors>",
+      "fingerprint": "780ed0fe9758998f",
+      "reads": [
+        "DynamicFormStore.serverErrors",
+        "DynamicFormStore.submitAttempted",
+        "DynamicFormStore.touched"
+      ],
+      "writes": []
+    },
+    {
+      "id": "dynamic-form.store.ts#DynamicFormStore.visibleSections",
+      "kind": "store-computed",
+      "name": "DynamicFormStore.visibleSections",
+      "file": "src/app/features/dynamic-form/dynamic-form.store.ts",
+      "line": 45,
+      "group": "DynamicFormStore",
+      "signature": "Signal<SectionDto[]>",
+      "fingerprint": "d44b7bee4259c44b",
+      "reads": [
+        "DynamicFormStore.definition",
+        "DynamicFormStore.values"
+      ],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent.errorId",
+      "kind": "class-field",
+      "name": "FieldComponent.errorId",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 69,
+      "group": "FieldComponent",
+      "signature": "Signal<string>",
+      "fingerprint": "525a8719ac6f02ac",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent.id",
+      "kind": "class-field",
+      "name": "FieldComponent.id",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 68,
+      "group": "FieldComponent",
+      "signature": "Signal<string>",
+      "fingerprint": "73187d06c0329bba",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent.onInput",
+      "kind": "class-method",
+      "name": "FieldComponent.onInput",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 71,
+      "group": "FieldComponent",
+      "signature": "(target: HTMLInputElement) => void",
+      "fingerprint": "fc7c81b8c1b13120",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template",
+      "kind": "template-render",
+      "name": "FieldComponent template",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 7,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "00ddd318f3c77536",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template:input(blur)",
+      "kind": "template-handler",
+      "name": "FieldComponent input(blur)",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 20,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "aa5c2979e3198abe",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template:input(change)",
+      "kind": "template-handler",
+      "name": "FieldComponent input(change)",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 19,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "7f1df294ede77ca7",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template:input(input)",
+      "kind": "template-handler",
+      "name": "FieldComponent input(input)",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 48,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "de01d60e37ab0d83",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template:select(blur)",
+      "kind": "template-handler",
+      "name": "FieldComponent select(blur)",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 32,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "3d018bfabb3598bf",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "field.component.ts#FieldComponent@template:select(change)",
+      "kind": "template-handler",
+      "name": "FieldComponent select(change)",
+      "file": "src/app/features/dynamic-form/field.component.ts",
+      "line": 31,
+      "group": "FieldComponent",
+      "signature": "",
+      "fingerprint": "500cdac748257674",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "rules-engine.ts#RulesEngine.initialValues",
+      "kind": "class-method",
+      "name": "RulesEngine.initialValues",
+      "file": "src/app/features/dynamic-form/rules-engine.ts",
+      "line": 10,
+      "group": "RulesEngine",
+      "signature": "(definition: FormDefinitionDto) => FormValues",
+      "fingerprint": "3825d6235d569f27",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "rules-engine.ts#RulesEngine.isVisible",
+      "kind": "class-method",
+      "name": "RulesEngine.isVisible",
+      "file": "src/app/features/dynamic-form/rules-engine.ts",
+      "line": 18,
+      "group": "RulesEngine",
+      "signature": "(field: FieldDto, values: FormValues) => boolean",
+      "fingerprint": "9c167aad41db20db",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "rules-engine.ts#RulesEngine.validate",
+      "kind": "class-method",
+      "name": "RulesEngine.validate",
+      "file": "src/app/features/dynamic-form/rules-engine.ts",
+      "line": 22,
+      "group": "RulesEngine",
+      "signature": "(definition: FormDefinitionDto, values: FormValues) => FieldErrors",
+      "fingerprint": "cfaf40801f6bfd92",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "rules-engine.ts#allFields",
+      "kind": "function",
+      "name": "allFields",
+      "file": "src/app/features/dynamic-form/rules-engine.ts",
+      "line": 33,
+      "group": "rules-engine.ts",
+      "signature": "(definition: FormDefinitionDto) => FieldDto[]",
+      "fingerprint": "459492a097384029",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "rules-engine.ts#validateField",
+      "kind": "function",
+      "name": "validateField",
+      "file": "src/app/features/dynamic-form/rules-engine.ts",
+      "line": 37,
+      "group": "rules-engine.ts",
+      "signature": "(field: FieldDto, value: unknown) => string[]",
+      "fingerprint": "7b245cd742c8fac2",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "src/app/shared/api/form-api.client.ts#FormApiClient.getDefinition",
+      "kind": "boundary",
+      "name": "FormApiClient.getDefinition",
+      "file": "src/app/shared/api/form-api.client.ts",
+      "line": 51,
+      "group": "src/app/shared/api",
+      "signature": "(formId: string) => Observable<FormDefinitionDto>",
+      "fingerprint": "",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "src/app/shared/api/form-api.client.ts#FormApiClient.getOptions",
+      "kind": "boundary",
+      "name": "FormApiClient.getOptions",
+      "file": "src/app/shared/api/form-api.client.ts",
+      "line": 55,
+      "group": "src/app/shared/api",
+      "signature": "(source: string, parent: string) => Observable<OptionDto[]>",
+      "fingerprint": "",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "src/app/shared/api/form-api.client.ts#FormApiClient.submit",
+      "kind": "boundary",
+      "name": "FormApiClient.submit",
+      "file": "src/app/shared/api/form-api.client.ts",
+      "line": 59,
+      "group": "src/app/shared/api",
+      "signature": "(formId: string, values: Record<string, unknown>) => Observable<SubmitResultDto>",
+      "fingerprint": "",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "src/app/shared/notifications/notifier.ts#Notifier.error",
+      "kind": "boundary",
+      "name": "Notifier.error",
+      "file": "src/app/shared/notifications/notifier.ts",
+      "line": 17,
+      "group": "src/app/shared/notifications",
+      "signature": "(message: string) => void",
+      "fingerprint": "",
+      "reads": [],
+      "writes": []
+    },
+    {
+      "id": "src/app/shared/notifications/notifier.ts#Notifier.success",
+      "kind": "boundary",
+      "name": "Notifier.success",
+      "file": "src/app/shared/notifications/notifier.ts",
+      "line": 13,
+      "group": "src/app/shared/notifications",
+      "signature": "(message: string) => void",
+      "fingerprint": "",
+      "reads": [],
+      "writes": []
+    }
+  ],
+  "edges": [
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent.ngOnInit",
+      "to": "dynamic-form.store.ts#DynamicFormStore.load",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent.onSubmit",
+      "to": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template",
+      "to": "dynamic-form.component.ts#DynamicFormComponent.optionsFor",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template",
+      "to": "dynamic-form.store.ts#DynamicFormStore.visibleErrors",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template",
+      "to": "dynamic-form.store.ts#DynamicFormStore.visibleSections",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(blurred)",
+      "to": "dynamic-form.store.ts#DynamicFormStore.markTouched",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(valueChange)",
+      "to": "dynamic-form.store.ts#DynamicFormStore.setValue",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.component.ts#DynamicFormComponent@template:form(submit)",
+      "to": "dynamic-form.component.ts#DynamicFormComponent.onSubmit",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.(loadOptions)",
+      "to": "src/app/shared/api/form-api.client.ts#FormApiClient.getOptions",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "mergeMap"
+          ],
+          "piped": [
+            "tap",
+            "catchError"
+          ],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.(loadOptions)",
+      "to": "src/app/shared/notifications/notifier.ts#Notifier.error",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "mergeMap",
+            "catchError"
+          ],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.clientErrors",
+      "to": "rules-engine.ts#RulesEngine.validate",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "?:"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.load",
+      "to": "rules-engine.ts#RulesEngine.initialValues",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "switchMap",
+            "tap"
+          ],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.load",
+      "to": "src/app/shared/api/form-api.client.ts#FormApiClient.getDefinition",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "switchMap"
+          ],
+          "piped": [
+            "tap",
+            "catchError"
+          ],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.load",
+      "to": "src/app/shared/notifications/notifier.ts#Notifier.error",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "switchMap",
+            "catchError"
+          ],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.setValue",
+      "to": "dynamic-form.store.ts#DynamicFormStore.(loadOptions)",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "for",
+            "if"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.setValue",
+      "to": "rules-engine.ts#allFields",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "to": "rules-engine.ts#RulesEngine.validate",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "exhaustMap"
+          ],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "to": "src/app/shared/api/form-api.client.ts#FormApiClient.submit",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "exhaustMap"
+          ],
+          "piped": [
+            "tap",
+            "catchError"
+          ],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "to": "src/app/shared/notifications/notifier.ts#Notifier.error",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "exhaustMap",
+            "catchError"
+          ],
+          "piped": [],
+          "branch": []
+        },
+        {
+          "within": [
+            "exhaustMap",
+            "tap"
+          ],
+          "piped": [],
+          "branch": [
+            "else"
+          ]
+        },
+        {
+          "within": [
+            "exhaustMap"
+          ],
+          "piped": [],
+          "branch": [
+            "if"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.submit",
+      "to": "src/app/shared/notifications/notifier.ts#Notifier.success",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "exhaustMap",
+            "tap"
+          ],
+          "piped": [],
+          "branch": [
+            "if"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.visibleErrors",
+      "to": "dynamic-form.store.ts#DynamicFormStore.clientErrors",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "dynamic-form.store.ts#DynamicFormStore.visibleSections",
+      "to": "rules-engine.ts#RulesEngine.isVisible",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [
+            "map",
+            "filter"
+          ],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent.errorId",
+      "to": "field.component.ts#FieldComponent.id",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent.onInput",
+      "to": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(valueChange)",
+      "kind": "emit",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "else"
+          ]
+        },
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "if"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template",
+      "to": "field.component.ts#FieldComponent.errorId",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template",
+      "to": "field.component.ts#FieldComponent.id",
+      "kind": "read",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template:input(blur)",
+      "to": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(blurred)",
+      "kind": "emit",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template:input(change)",
+      "to": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(valueChange)",
+      "kind": "emit",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template:input(input)",
+      "to": "field.component.ts#FieldComponent.onInput",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template:select(blur)",
+      "to": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(blurred)",
+      "kind": "emit",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "field.component.ts#FieldComponent@template:select(change)",
+      "to": "dynamic-form.component.ts#DynamicFormComponent@template:app-field(valueChange)",
+      "kind": "emit",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "rules-engine.ts#RulesEngine.initialValues",
+      "to": "rules-engine.ts#allFields",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "rules-engine.ts#RulesEngine.validate",
+      "to": "rules-engine.ts#RulesEngine.isVisible",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "for"
+          ]
+        }
+      ]
+    },
+    {
+      "from": "rules-engine.ts#RulesEngine.validate",
+      "to": "rules-engine.ts#allFields",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": []
+        }
+      ]
+    },
+    {
+      "from": "rules-engine.ts#RulesEngine.validate",
+      "to": "rules-engine.ts#validateField",
+      "kind": "call",
+      "sites": [
+        {
+          "within": [],
+          "piped": [],
+          "branch": [
+            "for"
+          ]
+        }
+      ]
+    }
+  ]
+}
