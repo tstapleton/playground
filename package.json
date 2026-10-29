@@ -6,7 +6,8 @@
     "fixtures/*"
   ],
   "scripts": {
-    "test": "npm test -w signal-trace && npm test -w fixture-base && npm test -w fixture-pr",
-    "demo:diff": "scripts/demo-diff.sh"
+    "test": "npm test -w signal-trace && npm test -w store-callgraph && npm test -w fixture-base && npm test -w fixture-pr",
+    "demo:diff": "scripts/demo-diff.sh",
+    "demo:callgraph": "scripts/demo-callgraph.sh"
   }
 }
