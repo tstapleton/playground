@@ -1,7 +1,8 @@
 # Proposal: static call graphs and call-graph diffs for SignalStore features
 
-Status: proposal, nothing built yet. Revised with answers on the target app (see
-[Decisions](#decisions-so-far)).
+Status: built as [`packages/store-callgraph`](../packages/store-callgraph), whose README
+describes how to use it. This document is the design rationale. Where the two differ, the
+README is current.
 
 ## The problem
 
@@ -141,9 +142,8 @@ recognizes:
 Boundary nodes are grouped in the diagram by where they live (`shared/api`, `shared/analytics`,
 a library), so it's clear at a glance which other parts of the app the feature depends on.
 
-Callers **outside** the feature (another feature using the store, a route, the app shell)
-are not shown by default. An option adds them as one layer of boundary nodes for
-features whose store is used elsewhere.
+Callers **outside** the feature (a route, the app shell) are not shown. Nothing outside a
+feature calls into it except routing and providers.
 
 ## Architecture
 
@@ -262,35 +262,36 @@ hand, to illustrate):
 
 ### 4. Slice: keeping diagrams small
 
-A **seed set** is chosen first:
+**Single revision:** one diagram per store method (or per method matching `--entry`): the
+method, its calls up to `--depth` levels down (default 3), and its callers up to `--up`
+levels (default 1).
 
-- **Diff mode:** every node that isn't unchanged.
-- **Single revision:** the feature's store methods, or the ones matching `--entry`.
+**Diff:** one diagram per store method that changed or can reach a change. It contains:
 
-The diagram then includes:
+1. the method and every node on a path from it to a change;
+2. one level of calls below each change (`--depth`, default 1), for context;
+3. the method's direct callers (`--up`, default 1), usually a template event binding,
+   `ngOnInit` or a component method.
 
-1. **Downstream:** from each seed, callees up to `--depth` (default 3), stopping at
-   boundary nodes.
-2. **Entry points:** the store methods that can reach a seed. The graph is entered through
-   the SignalStore API even when only a feature service changed.
-3. **Upstream:** callers of those entry points inside the feature, up to `--up` (default 2).
-   That usually covers the component method or template binding, and the child component
-   output that triggers it.
-4. **Unchanged subtrees** with no seed below them collapse into one `… N calls` node.
+Changes no store method reaches, such as a computed or a template, are drawn in further
+diagrams, one per connected group. An earlier version drew everything reachable from all
+changes in one diagram. On the fixtures that came to 37 nodes, too many to read. One
+diagram per entry point matches how a reviewer reads a PR: one method at a time.
 
 There is a **node budget** (default 40 per diagram). When a diagram exceeds it, the
-deepest unchanged nodes are removed first, in ID order, so pruning is deterministic. If
-a slice still doesn't fit, it is split into one diagram per entry point. Signal reads,
-`patchState` and RxJS operators aren't nodes. They appear only as edge context and node
-notes.
+context nodes furthest from the changes are removed first, in ID order, so pruning is
+deterministic. A node whose callees were left out says how many (`… 2 more calls`).
+Signal reads, `patchState` and RxJS operators aren't nodes. They appear only as edge
+context and node notes.
 
 ### 5. Render
 
 - **Mermaid `flowchart LR`.** The feature's nodes sit in one `subgraph` per store,
   component and service. Boundary nodes sit in a second group, by location. GitHub renders
   Mermaid inline in PR comments. The text is emitted in sorted order, so it is byte-stable.
-- **HTML report:** self-contained and rendered with a pinned Mermaid renderer. It has a
-  per-entry-point index, before/after/diff views and source links.
+- **HTML report:** self-contained and rendered to SVG with Pele, a pinned Mermaid
+  renderer. It has the change table with file and line for each node, an index of
+  diagrams, and each diagram's Mermaid source.
 - **JSON** (`graph.json`, `diff.json`) for other tools.
 - Layout is left to the renderer. The tool never emits coordinates, so the output stays
   stable.
@@ -368,31 +369,26 @@ store-callgraph/
 - **Tests:**
   - Golden files for the `base` and `pr` fixtures and their diff.
   - Run twice and compare the bytes.
-  - Run with the root file order shuffled.
+  - Root files are sorted before the program is created, so their order can't matter.
   - Run from a different working directory.
 
 ## Plan
 
-1. **Create the repository** and copy in `fixtures/base` and `fixtures/pr` as test
-   fixtures, without `signal-trace`'s instrumentation (`withTracing` and the traced
-   providers).
-2. **Extractor** for one revision: feature boundary, store methods, helpers, feature
-   services and functions, boundary nodes (classes, abstract classes, tokens), canonical
-   `graph.json`, golden tests.
-3. **Angular edges:** inline templates, outputs → parent bindings, hooks and effects.
-4. **Slicing and Mermaid/HTML output** for a single revision.
-5. **Checkout:** worktrees, `node_modules` reuse, cache, `graph --rev`.
-6. **Diff:** pairing, classification, PR comment with the size rule, HTML report. Goldens
-   for `base` → `pr`.
-7. **Optional:** a GitHub Action example, and running `diff` over every feature a PR
-   touches.
+| Step | Status |
+|---|---|
+| Extractor: feature boundary, store methods, helpers, hooks, services, functions, boundary nodes (classes, abstract classes, tokens), canonical `graph.json` | Done |
+| Angular edges: inline templates, outputs → parent bindings, effects | Done |
+| Slicing and Mermaid/HTML output for a single revision | Done |
+| Checkout: worktrees, `node_modules` reuse, `--install` | Done. Caching graphs by commit is not built yet; a run takes a few seconds on the fixtures |
+| Diff: pairing, renames, classification, PR comment with the size rule, HTML report | Done |
+| Tests: edge-case project, diff unit tests, goldens for `base` → `pr`, determinism | Done |
+| Move to its own repository, with `fixtures/base` and `fixtures/pr` as test fixtures (without `signal-trace`'s instrumentation) | To do, once the repository exists |
+| A GitHub Action example, and running `diff` over every feature a PR touches | Not started |
 
-## Open questions
+## Answers to earlier questions
 
-1. **Repository.** Once the new repository exists, it needs to be added to this session (or
-   a new session started on it) before Phase 1.
-2. **Callers from outside the feature.** Default is to leave them out. Are there features
-   whose store is used elsewhere in the app, where seeing those callers would matter?
-3. **Hidden boundary calls.** Angular, RxJS and NgRx calls are hidden by default. Should
-   `HttpClient` calls made directly from inside a feature be shown, since they are its real
-   outside dependency?
+- **Callers from outside the feature:** nothing outside a feature calls into it except
+  routing and providers, which can be ignored. Outside callers are not shown, and the
+  option to show them is not built.
+- **`HttpClient`:** features don't call it directly, so it stays hidden with the rest of
+  Angular.
