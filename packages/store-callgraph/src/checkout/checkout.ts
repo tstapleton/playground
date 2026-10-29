@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -41,10 +41,14 @@ export function checkout(repo: string, rev: string, install?: string): Checkout 
     if (changed.length && install) {
       execFileSync(install, { cwd: dir, shell: true, stdio: 'inherit' });
     } else {
-      if (changed.length) warnings.push(`${rev}: ${changed.join(', ')} differs from the working tree; using its node_modules anyway (pass --install to install)`);
+      if (changed.length)
+        warnings.push(
+          `${rev}: ${changed.join(', ')} differs from the working tree; using its node_modules anyway (pass --install to install)`,
+        );
       for (const modules of nodeModulesDirs(repo)) {
         const target = path.join(dir, modules);
-        if (existsSync(path.dirname(target)) && !existsSync(target)) symlinkSync(path.join(repo, modules), target, 'dir');
+        if (existsSync(path.dirname(target)) && !existsSync(target))
+          symlinkSync(path.join(repo, modules), target, 'dir');
       }
     }
   } catch (error) {
@@ -58,10 +62,13 @@ export function checkout(repo: string, rev: string, install?: string): Checkout 
 function nodeModulesDirs(repo: string, rel = '', depth = 0): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(path.join(repo, rel), { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === '.git') continue;
     const child = path.join(rel, entry.name);
-    if (entry.name === 'node_modules') found.push(child);
-    else if (depth < 4 && !entry.name.startsWith('.')) found.push(...nodeModulesDirs(repo, child, depth + 1));
+    const full = path.join(repo, child);
+    // Often a symlink, e.g. to a shared install.
+    const isDir = entry.isDirectory() || (entry.isSymbolicLink() && existsSync(full) && statSync(full).isDirectory());
+    if (entry.name === 'node_modules' && isDir) found.push(child);
+    if (!entry.isDirectory() || entry.name === '.git' || entry.name === 'node_modules') continue;
+    if (depth < 4 && !entry.name.startsWith('.')) found.push(...nodeModulesDirs(repo, child, depth + 1));
   }
   return found.sort();
 }
