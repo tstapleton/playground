@@ -1,12 +1,15 @@
-export { diffDiagrams, diffGraphs, graphDiagrams, graphOf } from './api';
 export type { AnalyzeOptions, Source } from './api';
+export { diffGraphs, graphDiagrams, graphOf, summarize } from './api';
+export type { Change } from './diff/describe';
 export type { ChangeClass, EdgeChange, GraphDiff, NodeChange } from './diff/diff';
-export { extract } from './extract/extract';
+export type { DiffSummary, Section } from './diff/sections';
 export type { ExtractOptions, ExtractResult } from './extract/extract';
+export { extract } from './extract/extract';
 export { serialize } from './graph/canonical';
 export type { CallSite, Graph, GraphEdge, GraphNode } from './graph/model';
-export { DEFAULT_SLICE } from './graph/slice';
 export type { SliceOptions, View } from './graph/slice';
+export { DEFAULT_SLICE } from './graph/slice';
 export { diffPage, graphPage } from './render/html';
+export type { DiffLabels } from './render/markdown';
 export { DEFAULT_COMMENT, diffComment } from './render/markdown';
 export { mermaid } from './render/mermaid';

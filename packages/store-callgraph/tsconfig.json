@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "strict": true,
-    "target": "ES2022",
+    "target": "es2022",
     "module": "preserve",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src", "test/*.ts"]
+  "include": ["src", "test/*.ts", "tsup.config.ts"]
 }

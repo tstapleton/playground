@@ -1,4 +1,13 @@
-import { Graph, GraphEdge, GraphNode, compare, edgeKey, siteKey } from '../graph/model';
+import {
+  append,
+  type CallSite,
+  compare,
+  edgeKey,
+  type Graph,
+  type GraphEdge,
+  type GraphNode,
+  siteKey,
+} from '../graph/model';
 
 /** How a node changed, most significant first. */
 export type ChangeClass =
@@ -19,6 +28,8 @@ export type ChangeClass =
 export interface NodeChange {
   /** The head ID, or the base ID for removed nodes. */
   id: string;
+  /** The head side, or the base side for removed nodes. */
+  node: GraphNode;
   base?: GraphNode;
   head?: GraphNode;
   class: ChangeClass;
@@ -40,6 +51,10 @@ export interface EdgeChange {
   to: string;
   kind: GraphEdge['kind'];
   status: EdgeStatus;
+  /** The head side's call sites, or the base side's for removed edges. */
+  sites: CallSite[];
+  /** The base side's call sites, when they changed. */
+  baseSites?: CallSite[];
   base?: GraphEdge;
   head?: GraphEdge;
 }
@@ -67,9 +82,22 @@ export function diffGraphs(base: Graph, head: Graph): GraphDiff {
   for (const key of [...new Set([...baseEdges.keys(), ...headEdges.keys()])].sort(compare)) {
     const b = baseEdges.get(key);
     const h = headEdges.get(key);
-    const e = (h ?? b)!;
-    const status: EdgeStatus = !b ? 'added' : !h ? 'removed' : sitesKey(b) !== sitesKey(h) ? 'context' : 'unchanged';
-    edges.push({ from: h ? h.from : toHead(b!.from), to: h ? h.to : toHead(b!.to), kind: e.kind, status, base: b, head: h });
+    if (h) {
+      const moved = b && sitesKey(b) !== sitesKey(h);
+      const status: EdgeStatus = !b ? 'added' : moved ? 'context' : 'unchanged';
+      edges.push({
+        from: h.from,
+        to: h.to,
+        kind: h.kind,
+        status,
+        sites: h.sites,
+        ...(moved ? { baseSites: b.sites } : {}),
+        base: b,
+        head: h,
+      });
+    } else if (b) {
+      edges.push({ from: toHead(b.from), to: toHead(b.to), kind: b.kind, status: 'removed', sites: b.sites, base: b });
+    }
   }
 
   const renamedFrom = new Map([...renames].map(([from, to]) => [to, from]));
@@ -78,13 +106,13 @@ export function diffGraphs(base: Graph, head: Graph): GraphDiff {
     const baseId = renamedFrom.get(h.id) ?? h.id;
     const b = baseNodes.get(baseId);
     if (!b) {
-      nodes.push({ id: h.id, head: h, class: 'added' });
+      nodes.push({ id: h.id, node: h, head: h, class: 'added' });
       continue;
     }
     nodes.push(compareNode(b, h, edges, baseId !== h.id ? baseId : undefined));
   }
   for (const b of base.nodes) {
-    if (!renames.has(b.id) && !headNodes.has(b.id)) nodes.push({ id: b.id, base: b, class: 'removed' });
+    if (!renames.has(b.id) && !headNodes.has(b.id)) nodes.push({ id: b.id, node: b, base: b, class: 'removed' });
   }
   nodes.sort((a, b) => compare(a.id, b.id));
 
@@ -92,7 +120,7 @@ export function diffGraphs(base: Graph, head: Graph): GraphDiff {
 }
 
 function compareNode(b: GraphNode, h: GraphNode, edges: EdgeChange[], renamedFrom: string | undefined): NodeChange {
-  const change: NodeChange = { id: h.id, base: b, head: h, class: 'unchanged' };
+  const change: NodeChange = { id: h.id, node: h, base: b, head: h, class: 'unchanged' };
   if (renamedFrom) change.renamedFrom = renamedFrom;
   const outgoing = edges.filter((e) => e.from === h.id);
   const added = outgoing.filter((e) => e.status === 'added').map((e) => e.to);
@@ -126,11 +154,16 @@ function compareNode(b: GraphNode, h: GraphNode, edges: EdgeChange[], renamedFro
  * Pairs nodes that exist on one side only: same kind, and either an identical body or
  * mostly the same callees. Highest score first, ties broken by ID.
  */
-function pairRenames(base: Graph, head: Graph, baseNodes: Map<string, GraphNode>, headNodes: Map<string, GraphNode>): Map<string, string> {
+function pairRenames(
+  base: Graph,
+  head: Graph,
+  baseNodes: Map<string, GraphNode>,
+  headNodes: Map<string, GraphNode>,
+): Map<string, string> {
   const callees = (g: Graph) => {
-    const map = new Map<string, Set<string>>();
-    for (const e of g.edges) (map.get(e.from) ?? map.set(e.from, new Set()).get(e.from)!).add(e.to);
-    return map;
+    const map = new Map<string, string[]>();
+    for (const e of g.edges) append(map, e.from, e.to);
+    return new Map([...map].map(([k, v]) => [k, new Set(v)]));
   };
   const baseCallees = callees(base);
   const headCallees = callees(head);

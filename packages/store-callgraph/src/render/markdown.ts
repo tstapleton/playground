@@ -1,101 +1,154 @@
-import { ChangeClass, GraphDiff, NodeChange } from '../diff/diff';
-import { compare } from '../graph/model';
-import { View } from '../graph/slice';
-import { classLabel, describe, fullName } from './labels';
+import { type Change, DIFF_MARKS } from '../diff/describe';
+import { countsText, type DiffSummary, dependenciesText, type Section } from '../diff/sections';
 import { mermaid } from './mermaid';
 
-export interface Labels {
+/** GitHub caps comments at 65,536 characters; leave room for the footer. */
+const COMMENT_LIMIT = 60_000;
+
+export interface DiffLabels {
   base: string;
   head: string;
-  /** Link to the HTML report, for diagrams too large to inline. */
+  /** Link to the full HTML report, e.g. a workflow artifact. */
   reportUrl?: string;
 }
 
 export interface CommentOptions {
-  /** Diagrams with more nodes than this are left out of the comment. */
+  /** Diagrams with more nodes than this are left to the report. */
   inlineLimit: number;
-  /** GitHub rejects comments over 65,536 characters. */
-  maxLength: number;
 }
 
-export const DEFAULT_COMMENT: CommentOptions = { inlineLimit: 25, maxLength: 65_000 };
+export const DEFAULT_COMMENT: CommentOptions = { inlineLimit: 25 };
 
-const ORDER: ChangeClass[] = ['structural', 'added', 'removed', 'context', 'state', 'implementation', 'renamed'];
+export const LEGEND = `${DIFF_MARKS.added} added · ${DIFF_MARKS.removed} removed · ${DIFF_MARKS.changed} changed · ${DIFF_MARKS.moved} moved to a different point`;
 
-const LEGEND =
-  '<sub>Green: added · red, dashed: removed · amber: calls changed (dashed: same calls, different place) · blue: state access changed · ' +
-  'thick outline: body changed only. Solid arrows are calls, dotted arrows are reads, thick arrows are outputs reaching a parent template.</sub>';
+/**
+ * A pull-request comment: what changed in words, a table of the store methods it
+ * touches, then for each a Mermaid diff diagram (GitHub renders these) and its changes.
+ */
+export function diffComment(
+  feature: string,
+  summary: DiffSummary,
+  labels: DiffLabels,
+  options: CommentOptions = DEFAULT_COMMENT,
+): string {
+  const { sections, changes, unchanged, storeMethods } = summary;
+  const total = storeMethods.changed + storeMethods.added + storeMethods.removed + storeMethods.unchanged;
+  const counts = (['changed', 'added', 'removed', 'unchanged'] as const)
+    .map((s) => `${storeMethods[s]} ${s}`)
+    .join(', ');
+  const others = sections.filter((s) => !s.entry).length;
+  const head: string[] = [
+    '## Call graph diff',
+    '',
+    `\`${labels.base}\` → \`${labels.head}\` · \`${feature}\` · **${total} store method${total === 1 ? '' : 's'}**: ${counts}${others ? ` · ${others} change${others === 1 ? '' : 's'} outside them` : ''}`,
+    '',
+    `<sub>Each diagram is a store method and the code it can reach, read from the source on both sides. ${LEGEND}. Code outside the feature is shown but not followed.</sub>`,
+    '',
+    ...whatChanged(changes, sections),
+    ...(sections.length
+      ? [
+          '| Diagram | | Changes | Dependencies outside the feature |',
+          '|---|---|---|---|',
+          ...sections.map(
+            (s) => `| ${cell(s.title)} | ${s.status} | ${countsText(s)} | ${cell(dependenciesText(s))} |`,
+          ),
+          '',
+        ]
+      : ['No function, call or dependency changed.', '']),
+    ...(unchanged.length
+      ? [
+          `<details><summary>${unchanged.length} unchanged store method${unchanged.length > 1 ? 's' : ''}</summary>`,
+          '',
+          ...unchanged.map((u) => `- ${u}`),
+          '',
+          '</details>',
+          '',
+        ]
+      : []),
+  ];
+  if (labels.reportUrl)
+    head.push(
+      `[Open the full report](${labels.reportUrl}) for every diagram rendered, with before and after side by side.`,
+      '',
+    );
 
-/** A pull-request comment: a summary, every change as a table row, and small diagrams inline. */
-export function diffComment(diff: GraphDiff, views: View[], labels: Labels, options: CommentOptions = DEFAULT_COMMENT): string {
-  const changes = significant(diff);
-  const nameOf = nameLookup(diff);
-  const head: string[] = [`## Call graph changes in \`${diff.head.feature}\``, '', `\`${labels.base}\` → \`${labels.head}\` · ${summary(changes)}`, ''];
-  if (changes.length === 0) return [...head, 'No method, call or dependency changed.', ''].join('\n');
-
-  const table = ['| Change | Where | What |', '|---|---|---|'];
-  for (const c of changes) {
-    const node = (c.head ?? c.base)!;
-    const where = node.kind === 'boundary' ? `\`${fullName(node)}\` (outside)` : `\`${fullName(node)}\``;
-    const what = describe(c, nameOf, diff.edges).join('; ') || '—';
-    table.push(`| ${classLabel(c)} | ${cell(where)} | ${cell(what)} |`);
+  const out = [...head];
+  let omitted = 0;
+  for (const s of sections) {
+    const text = section(s, options, labels);
+    if (out.join('\n').length + text.length > COMMENT_LIMIT) omitted++;
+    else out.push(text);
   }
+  if (omitted)
+    out.push(
+      `_${omitted} more diagram${omitted > 1 ? 's' : ''} left out to fit GitHub's comment size limit; see the full report._`,
+      '',
+    );
+  return out.join('\n');
+}
 
-  const diagrams = views.map((v) => ({
-    view: v,
-    inline: v.nodes.length <= options.inlineLimit,
-    text: ['```mermaid', mermaid(v).trimEnd(), '```'].join('\n'),
-  }));
-  const render = () => {
-    const sections = diagrams.map(({ view, inline, text }) => {
-      const title = `### ${view.title}`;
-      if (inline) return [title, '', text, ''].join('\n');
-      const where = labels.reportUrl ? `see the [report](${labels.reportUrl})` : 'see the HTML report';
-      return [title, '', `_${view.nodes.length} nodes, too many to show here; ${where}._`, ''].join('\n');
-    });
-    return [...head, LEGEND, '', ...table, '', ...sections].join('\n');
+function section(s: Section, options: CommentOptions, labels: DiffLabels): string {
+  const title = s.status === 'added' ? 'New store method' : s.status === 'removed' ? 'Removed store method' : 'Changed';
+  const meta = [`\`${s.file}\``, countsText(s)];
+  if (s.dependencies.added.length) meta.push(`new dependency: **${s.dependencies.added.join(', ')}**`);
+  if (s.dependencies.removed.length) meta.push(`no longer calls: **${s.dependencies.removed.join(', ')}**`);
+  const shown = s.changes.slice(0, 8);
+  const nodes = s.diagram.nodes.length;
+  const kind = s.status === 'changed' ? 'diff' : 'graph';
+  const diagram =
+    nodes <= options.inlineLimit
+      ? [
+          `<details${s.status === 'changed' ? ' open' : ''}><summary>Call graph ${kind}</summary>`,
+          '',
+          '```mermaid',
+          mermaid(s.diagram).trimEnd(),
+          '```',
+          '',
+          '</details>',
+        ]
+      : [
+          `_The diagram has ${nodes} nodes, too many to show here; ${labels.reportUrl ? `see the [full report](${labels.reportUrl})` : 'see the full report'}._`,
+        ];
+  return [
+    `### ${title}: ${s.title}`,
+    '',
+    meta.join(' · '),
+    '',
+    ...(s.changes.length
+      ? [
+          ...shown.map((c) => `- ${DIFF_MARKS[c.op]} ${c.text}`),
+          ...(s.changes.length > shown.length
+            ? [`- … and ${s.changes.length - shown.length} more in the diagram`]
+            : []),
+          '',
+        ]
+      : []),
+    ...diagram,
+    '',
+  ].join('\n');
+}
+
+/** Every change once, at the top, with the diagrams that show it. */
+function whatChanged(changes: Change[], sections: Section[]): string[] {
+  if (!changes.length) return [];
+  const shown = changes.slice(0, 12);
+  const where = (c: Change) => {
+    const shownIn = sections.filter((s) => s.changes.some((x) => x.key === c.key));
+    return shownIn.length > 1
+      ? ` · in ${shownIn.length} diagrams`
+      : shownIn.length === 1
+        ? ` · in ${shownIn[0].title}`
+        : '';
   };
-
-  // Over the size limit: leave out the largest inline diagrams until it fits.
-  let out = render();
-  const bySize = [...diagrams].sort((a, b) => b.text.length - a.text.length || compare(a.view.title, b.view.title));
-  for (const d of bySize) {
-    if (out.length <= options.maxLength) break;
-    if (d.inline) {
-      d.inline = false;
-      out = render();
-    }
-  }
-  return out;
-}
-
-/** Changes worth listing, most significant first. */
-export function significant(diff: GraphDiff): NodeChange[] {
-  return diff.nodes
-    .filter((c) => c.class !== 'unchanged')
-    .sort((a, b) => ORDER.indexOf(a.class) - ORDER.indexOf(b.class) || compare(fullName((a.head ?? a.base)!), fullName((b.head ?? b.base)!)));
-}
-
-export function summary(changes: NodeChange[]): string {
-  const inside = changes.filter((c) => (c.head ?? c.base)!.kind !== 'boundary');
-  const outside = changes.filter((c) => (c.head ?? c.base)!.kind === 'boundary');
-  const count = (list: NodeChange[], cls: ChangeClass) => list.filter((c) => c.class === cls).length;
-  const changed = inside.length - count(inside, 'added') - count(inside, 'removed');
-  const parts = [`**${changed}** changed, **${count(inside, 'added')}** added, **${count(inside, 'removed')}** removed in the feature`];
-  if (outside.length) {
-    const deps = [`+${count(outside, 'added')}`, `−${count(outside, 'removed')}`];
-    const signatures = outside.filter((c) => c.signature).length;
-    parts.push(`dependencies outside it: **${deps.join(' ')}**${signatures ? `, **${signatures}** with a changed signature` : ''}`);
-  }
-  return parts.join(' · ');
+  return [
+    '#### What changed',
+    '',
+    ...shown.map((c) => `- ${DIFF_MARKS[c.op]} ${c.text}${where(c)}`),
+    ...(changes.length > shown.length ? [`- … and ${changes.length - shown.length} more`] : []),
+    '',
+  ];
 }
 
 function cell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\n/g, ' ');
-}
-
-export function nameLookup(diff: GraphDiff): (id: string) => string {
-  const names = new Map(diff.nodes.map((c) => [c.id, fullName((c.head ?? c.base)!)]));
-  for (const c of diff.nodes) if (c.renamedFrom && c.base) names.set(c.renamedFrom, fullName(c.base));
-  return (id) => names.get(id) ?? id;
+  return text.replace(/\|/g, '\\|');
 }

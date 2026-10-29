@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { patchState, signalStore, withHooks, withMethods, withState } from '@ngrx/signals';
-import { CLOCK, Logger, formatCount } from '../shared/tokens';
+import { CLOCK, formatCount, Logger } from '../shared/tokens';
 
 export const CounterStore = signalStore(
   withState({ count: 0, updatedAt: 0 }),

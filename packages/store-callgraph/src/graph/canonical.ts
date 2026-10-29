@@ -1,4 +1,4 @@
-import { CallSite, Graph, GraphEdge, GraphNode, compare, edgeKey, siteKey } from './model';
+import { type CallSite, compare, edgeKey, type Graph, type GraphEdge, type GraphNode, siteKey } from './model';
 
 const sortedUnique = (values: string[]) => [...new Set(values)].sort(compare);
 
@@ -38,10 +38,12 @@ function canonicalNode(node: GraphNode): GraphNode {
 }
 
 function canonicalSites(sites: CallSite[]): CallSite[] {
-  const byKey = new Map(sites.map((s) => [siteKey(s), { within: [...s.within], piped: [...s.piped], branch: [...s.branch] }]));
+  const byKey = new Map(
+    sites.map((s) => [siteKey(s), { within: [...s.within], piped: [...s.piped], branch: [...s.branch] }]),
+  );
   return [...byKey.entries()].sort(([a], [b]) => compare(a, b)).map(([, s]) => s);
 }
 
 export function serialize(graph: Graph): string {
-  return JSON.stringify(canonicalize(graph), null, 2) + '\n';
+  return `${JSON.stringify(canonicalize(graph), null, 2)}\n`;
 }

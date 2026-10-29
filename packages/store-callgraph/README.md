@@ -1,9 +1,13 @@
 # store-callgraph
 
-Static call graphs of one feature of an Angular app built on NgRx SignalStore, and diffs of
-those graphs between two revisions. It's meant for pull-request review: it shows what a
-change does to the calls between stores, components and services, beyond what the line
-diff shows.
+Static call graphs of one feature of an Angular app built on NgRx SignalStore, diffed
+between a pull request and its base, so reviewers see how the calls between stores,
+components and services changed, not just the lines.
+
+It's the static counterpart of [plotline](https://github.com/tstapleton/plotline), which
+records sequence diagrams from integration tests. plotline shows what one test run did;
+this shows every call the code can make, whether or not a test reaches it. The diffs
+look and read the same way.
 
 The graph is built from the source alone, with the TypeScript type checker and Angular's
 template parser. It doesn't run the app or the tests, needs no changes to the app, and
@@ -13,75 +17,74 @@ See [`examples/callgraph-diff`](../../examples/callgraph-diff) for the output of
 `npm run demo:callgraph`: the [PR comment](../../examples/callgraph-diff/comment.md) and
 the [HTML report](../../examples/callgraph-diff/index.html).
 
-## Commands
+## Use it locally
 
 ```bash
-# The call graph of one revision: one diagram per store method.
-store-callgraph graph --feature src/app/features/dynamic-form [--rev main | --dir path/to/app] --out callgraph
-
-# What a pull request changes.
-store-callgraph diff --feature src/app/features/dynamic-form --base origin/main [--head HEAD] --out callgraph-diff \
+npx store-callgraph graph --feature src/app/features/meal-plan [--rev main | --dir path/to/app] --out callgraph
+npx store-callgraph diff --feature src/app/features/meal-plan --base origin/main [--head HEAD] --out callgraph-diff \
   [--base-label main] [--head-label my-branch] [--report-url <link to index.html>]
 ```
 
-`graph` writes `graph.json`, `diagrams.md` (Mermaid) and `index.html`.
+`graph` writes `graph.json`, `diagrams.md` (Mermaid) and `index.html`: one diagram per
+store method.
 
 `diff` writes:
 
-- **`comment.md`**: for a pull-request comment. It has a summary line and a table of every
-  change, followed by one Mermaid diagram per changed store method. Diagrams with more than
-  25 nodes are replaced by a link to the report, and the largest diagrams are dropped if the
-  comment would exceed GitHub's size limit.
-- **`index.html`**: a self-contained report with the same table and every diagram, rendered
-  to SVG with [Pele](https://pele.run). It has no scripts.
+- **`comment.md`**: for a pull-request comment. Diagrams with more than 25 nodes are left
+  to the report, and whole sections are left out if the comment would pass GitHub's size
+  limit.
+- **`index.html`**: a self-contained report rendered with [Pele](https://pele.run), with
+  each store method before and after side by side. It has no scripts.
 - `base.json`, `head.json` and `diff.json`: the graphs and the diff, for other tools.
+
+The first thing it prints is the number of changes, for scripts that read it.
 
 | Option | Meaning |
 |---|---|
 | `--feature <dir>` | The feature directory, relative to the tsconfig's directory. Required |
 | `--tsconfig <path>` | The app's tsconfig, relative to the checkout (default `tsconfig.app.json`) |
-| `--base <rev>`, `--head <rev>` | Git revisions. Each is checked out in a temporary worktree. Without `--head`, the head is the working tree |
+| `--base <rev>`, `--head <rev>` | Git revisions, each checked out in a temporary worktree. Without `--head`, the head is the working tree |
 | `--base-dir`, `--head-dir`, `--dir` | Directories to read as they are, instead of revisions |
 | `--install <command>` | Run in a checked-out revision whose lockfile differs from the working tree's. By default the working tree's `node_modules` is reused |
-| `--entry <pattern>` | `graph`: only store methods whose name matches, e.g. `'DynamicFormStore.load*'` |
-| `--depth <n>` | Calls to follow below an entry point (`graph`, default 3) or below a change (`diff`, default 1) |
-| `--up <n>` | Callers to show above an entry point (default 1) |
+| `--entry <pattern>` | `graph`: only store methods whose name matches, e.g. `'MealPlanStore.make*'` |
+| `--depth <n>` | Calls to follow below a store method (`graph`, default 3) or below a change (`diff`, default 1) |
+| `--up <n>` | Callers to show above a store method (default 1) |
 | `--budget <n>` | Most nodes per diagram (default 40) |
 | `--inline-limit <n>` | `diff`: diagrams with more nodes stay out of `comment.md` (default 25) |
-| `--hide <a,b>` | Prefixes of boundary IDs to leave out (default `@angular/,@ngrx/,rxjs,tslib,zone.js`) |
+| `--hide <a,b>` | Prefixes of outside code to leave out (default `@angular/,@ngrx/,rxjs,tslib,zone.js`) |
 
 Any option can also be set in `store-callgraph.config.json` in the current directory, with
-the option names as keys: `{ "feature": "src/app/features/dynamic-form", "budget": 30 }`.
+the option names as keys: `{ "feature": "src/app/features/meal-plan", "budget": 30 }`.
 
-The same steps are available from code: `graphOf`, `diffGraphs`, `diffDiagrams`,
-`graphDiagrams`, `diffComment`, `diffPage` and `serialize`, all from `store-callgraph`.
+The same steps are available from code: `graphOf`, `diffGraphs`, `summarize`,
+`diffComment`, `diffPage`, `graphDiagrams` and `serialize`.
 
 ## Reading a diff
 
-Every function in the feature is compared with its counterpart on the other side, and gets
-one of these classes, most significant first:
+The comment starts with **What changed**: each change in words, such as
+"**MealPlanStore** `makeGroceryList()` now calls **GroceryApi** `lists()`". Calls rank
+above state changes, and those above edits that changed neither. A change shown in
+several diagrams is listed once, with how many.
 
-| Class | Meaning | Drawn as |
-|---|---|---|
-| calls changed | It calls something new or stops calling something, or its signature changed | Amber |
-| added / removed | It exists on one side only | Green / red, dashed |
-| call context changed | Same calls, but one runs somewhere else: inside a different RxJS operator or callback, under different control flow, or with different operators piped onto it | Amber, dashed |
-| state access changed | Same calls, but it writes (`patchState`) or reads different store state | Blue |
-| body changed | Only the body changed; calls, context and state access are the same | Thick outline |
-| renamed | Same body or mostly the same callees under a new name | Blue, dotted |
+A table follows with one row per diagram, then the store methods that didn't change. Each
+diagram is a store method and the paths from it to what changed, with one level of calls
+below each change and the method's direct callers, such as a template's event binding.
+Changes no store method reaches, such as a computed or a template, get diagrams of their
+own. Diagrams are in review order: biggest change first. A store method that is new or
+gone is drawn as a plain graph rather than all + or all −.
 
-Edges are green when added, red and dashed when removed, and amber and dotted when their
-context changed. A context change is labelled with where the call was and where it is now:
-`was switchMap, piped tap › catchError, now switchMap › defer, piped retry › tap › catchError`.
+| Mark | Meaning |
+|---|---|
+| `+` | added: a function or call only on the PR side |
+| `−` | removed: only on the base side |
+| `Δ` | changed: the function's code changed. The diagram notes what: `was load` (renamed), `was (id: string) => …` (signature), `+ updates error` (state), or `body only` (the code changed, but not what it calls or the state it uses) |
+| `↕` | moved: the same call, at a different point, e.g. from inside `tap` into `catchError`, or into an `if` |
 
-Solid arrows are calls, dotted arrows are reads (a computed signal, or a method called from
-a template binding), and thick arrows are a child component's `output.emit()` reaching the
-parent template's handler.
-
-There is one diagram per store method that changed or reaches a change. It shows the paths
-from the method to the changes, one level of calls below each change, and the method's
-direct callers, such as a template event binding or `ngOnInit`. Changes that no store
-method reaches, such as a computed or a template, are drawn in further diagrams.
+Code outside the feature is labelled `(new)` when the PR starts calling it and
+`(removed)` when it stops. Solid arrows are calls, dotted arrows are reads (a computed,
+or a method called from a template binding), and thick arrows are a child component's
+`output.emit()` reaching the parent template. `⋯ 2 more calls` marks calls left out to
+keep the diagram small.
 
 ## How it works
 
@@ -139,16 +142,27 @@ and from a different working directory. To accept an intended change to the outp
 - **`node_modules` comes from the working tree** when a checked-out revision has the same
   lockfile. If the lockfile differs, pass `--install "npm ci --ignore-scripts"`, or the
   graph may resolve against the wrong library versions.
+- **Dependencies must be installed.** Without `@ngrx/signals`' types nothing resolves, so the
+  run fails rather than reporting that nothing changed.
 - The analyzer uses the TypeScript 5.x compiler API that Angular 20 requires. TypeScript 7
   has a different API.
 
-## Layout
+## Develop
+
+```bash
+npm ci
+npm test            # unit tests, the edge-case project and the fixtures' golden files
+npm run typecheck
+npm run lint        # Biome
+npm run build       # dist/: the CLI and the API, ESM
+npm run verify      # all of the above, and npm pack --dry-run
+```
 
 | Path | What |
 |---|---|
-| `src/extract` | Program setup, unit discovery, call resolution, templates |
+| `src/extract` | Program setup, finding functions, resolving calls, templates |
 | `src/graph` | The graph model, canonical form, slicing into diagrams |
-| `src/diff` | Pairing nodes (including renames) and classifying changes |
-| `src/render` | Mermaid, PR comment, HTML report |
+| `src/diff` | Pairing nodes (including renames), classifying changes, describing them, sections |
+| `src/render` | Mermaid, the PR comment, the HTML report |
 | `src/checkout` | Git worktrees and `node_modules` reuse |
 | `test` | Unit tests, a small project covering edge cases, golden files for the fixtures |

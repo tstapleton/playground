@@ -1,6 +1,6 @@
-import { ChangeClass, EdgeStatus, GraphDiff, NodeChange } from '../diff/diff';
+import type { ChangeClass, EdgeStatus, GraphDiff, NodeChange } from '../diff/diff';
 import { fullName } from '../render/labels';
-import { CallSite, EdgeKind, Graph, GraphNode, compare } from './model';
+import { append, type CallSite, compare, type EdgeKind, type Graph, type GraphNode, KIND_ORDER } from './model';
 
 export interface ViewNode {
   id: string;
@@ -24,6 +24,8 @@ export interface ViewEdge {
 /** A graph or diff, or part of one, ready to draw. */
 export interface View {
   title: string;
+  /** The store method the diagram starts from, if it has one. */
+  entry?: string;
   nodes: ViewNode[];
   edges: ViewEdge[];
 }
@@ -50,14 +52,20 @@ export function graphView(graph: Graph): View {
 export function diffView(diff: GraphDiff): View {
   return {
     title: diff.head.feature,
-    nodes: diff.nodes.map((change) => ({ id: change.id, node: (change.head ?? change.base)!, status: change.class, change, hidden: 0 })),
+    nodes: diff.nodes.map((change) => ({
+      id: change.id,
+      node: change.node,
+      status: change.class,
+      change,
+      hidden: 0,
+    })),
     edges: diff.edges.map((e) => ({
       from: e.from,
       to: e.to,
       kind: e.kind,
       status: e.status,
-      sites: (e.head ?? e.base)!.sites,
-      ...(e.status === 'context' ? { baseSites: e.base!.sites } : {}),
+      sites: e.sites,
+      ...(e.baseSites ? { baseSites: e.baseSites } : {}),
     })),
   };
 }
@@ -75,7 +83,11 @@ export function entryIds(view: View, pattern?: string): string[] {
 
 /** One diagram per seed, e.g. per store method of a single revision. */
 export function slicePerSeed(view: View, seeds: string[], options: SliceOptions): View[] {
-  return seeds.map((seed) => ({ ...slice(view, [seed], [seed], [seed], options), title: nameOf(view, seed) }));
+  return seeds.map((seed) => ({
+    ...slice(view, [seed], [seed], [seed], options),
+    title: nameOf(view, seed),
+    entry: seed,
+  }));
 }
 
 /**
@@ -96,8 +108,8 @@ export function slicePerEntry(view: View, options: SliceOptions): View[] {
     if (targets.length === 0) continue;
     // Only what lies on a path from the entry to a change.
     const between = [...closure(targets, into)].filter((id) => reach.has(id));
-    views.push({ ...slice(view, between, targets, [entry], options), title: nameOf(view, entry) });
-    targets.forEach((t) => covered.add(t));
+    views.push({ ...slice(view, between, targets, [entry], options), title: nameOf(view, entry), entry });
+    for (const t of targets) covered.add(t);
   }
 
   const rest = [...changed].filter((id) => !covered.has(id));
@@ -131,7 +143,7 @@ function slice(view: View, core: string[], down: string[], up: string[], options
       const following: string[] = [];
       for (const id of frontier) {
         for (const n of next.get(id) ?? []) {
-          if (distance.has(n) && distance.get(n)! <= d) continue;
+          if ((distance.get(n) ?? Number.POSITIVE_INFINITY) <= d) continue;
           distance.set(n, d);
           following.push(n);
         }
@@ -144,8 +156,13 @@ function slice(view: View, core: string[], down: string[], up: string[], options
 
   const coreSet = new Set(core);
   const kept = new Set(distance.keys());
-  const droppable = [...kept].filter((id) => !coreSet.has(id)).sort((a, b) => distance.get(b)! - distance.get(a)! || compare(b, a));
-  while (kept.size > options.budget && droppable.length) kept.delete(droppable.shift()!);
+  const droppable = [...kept]
+    .filter((id) => !coreSet.has(id))
+    .sort((a, b) => (distance.get(b) ?? 0) - (distance.get(a) ?? 0) || compare(b, a));
+  for (const id of droppable) {
+    if (kept.size <= options.budget) break;
+    kept.delete(id);
+  }
 
   const nodes = view.nodes
     .filter((n) => kept.has(n.id))
@@ -158,7 +175,7 @@ function adjacency(view: View, direction: 'out' | 'in'): Map<string, string[]> {
   const map = new Map<string, string[]>();
   for (const e of view.edges) {
     const [a, b] = direction === 'out' ? [e.from, e.to] : [e.to, e.from];
-    (map.get(a) ?? map.set(a, []).get(a)!).push(b);
+    append(map, a, b);
   }
   return map;
 }
@@ -166,8 +183,8 @@ function adjacency(view: View, direction: 'out' | 'in'): Map<string, string[]> {
 function closure(from: string[], next: Map<string, string[]>): Set<string> {
   const seen = new Set(from);
   const stack = [...from];
-  while (stack.length) {
-    for (const n of next.get(stack.pop()!) ?? []) {
+  for (let id = stack.pop(); id !== undefined; id = stack.pop()) {
+    for (const n of next.get(id) ?? []) {
       if (!seen.has(n)) {
         seen.add(n);
         stack.push(n);
@@ -178,10 +195,10 @@ function closure(from: string[], next: Map<string, string[]>): Set<string> {
 }
 
 function components(view: View): Set<string>[] {
-  const neighbours = new Map<string, string[]>(view.nodes.map((n) => [n.id, []]));
+  const neighbours = new Map<string, string[]>();
   for (const e of view.edges) {
-    neighbours.get(e.from)!.push(e.to);
-    neighbours.get(e.to)!.push(e.from);
+    append(neighbours, e.from, e.to);
+    append(neighbours, e.to, e.from);
   }
   const seen = new Set<string>();
   const result: Set<string>[] = [];
@@ -189,23 +206,44 @@ function components(view: View): Set<string>[] {
     if (seen.has(id)) continue;
     seen.add(id);
     const component = closure([id], neighbours);
-    component.forEach((n) => seen.add(n));
+    for (const n of component) seen.add(n);
     result.push(component);
   }
   return result;
 }
 
 function nameOf(view: View, id: string): string {
-  return fullName(view.nodes.find((n) => n.id === id)!.node);
+  return fullName(nodeIn(view, id).node);
 }
 
+export function nodeIn(view: View, id: string): ViewNode {
+  const node = view.nodes.find((n) => n.id === id);
+  if (!node) throw new Error(`No node ${id} in the view`);
+  return node;
+}
+
+/** The node a view is about: its entry point, or else its most significant change. */
+export function mainNode(view: View): ViewNode {
+  if (view.entry) return nodeIn(view, view.entry);
+  const changed = view.nodes.filter((n) => n.status !== 'unchanged');
+  const rank = (n: ViewNode) => KIND_ORDER.indexOf(n.node.kind);
+  return [...(changed.length ? changed : view.nodes)].sort((a, b) => rank(a) - rank(b) || compare(a.id, b.id))[0];
+}
+
+/** Named after its most significant change: `DynamicFormStore.clientErrors and 3 more`. */
 function titleOf(view: View): string {
-  const names = view.nodes.filter((n) => n.status !== 'unchanged').map((n) => fullName(n.node));
-  return names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+  const others = view.nodes.filter((n) => n.status !== 'unchanged').length - 1;
+  const first = fullName(mainNode(view).node);
+  return others > 0 ? `${first} and ${others} more` : first;
 }
 
 /** `*` matches any run of characters; nothing else is special. */
 export function globMatcher(pattern: string): (text: string) => boolean {
-  const re = new RegExp(`^${pattern.split('*').map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`);
+  const re = new RegExp(
+    `^${pattern
+      .split('*')
+      .map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*')}$`,
+  );
   return (text) => re.test(text);
 }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import ts from 'typescript';
-import { NodeKind } from '../graph/model';
+import type { NodeKind } from '../graph/model';
 import { calleeName, fingerprint, lineOf, nameText, signatureOf, skipOuter } from './ts-utils';
 
 /** A function in the feature that becomes a graph node. */
@@ -23,12 +23,27 @@ export interface Unit {
   isSignal?: boolean;
 }
 
+export interface ComponentTemplate {
+  /** The template text; empty when it's in a `templateUrl` file. */
+  text: string;
+  /** Where the template starts, for line numbers. */
+  node: ts.Node;
+  selector?: string;
+  templateUrl: boolean;
+}
+
+export interface Component {
+  cls: ts.ClassDeclaration;
+  name: string;
+  template: ComponentTemplate;
+}
+
 export interface FeatureUnits {
   units: Unit[];
   /** State property declarations → `Store.key`. */
   stateKeys: Map<ts.Node, string>;
-  /** Classes with an inline `template`, for template analysis. */
-  components: ts.ClassDeclaration[];
+  /** Components, for template analysis. */
+  components: Component[];
 }
 
 /** Calls whose function argument is the real body: `computed(() => …)`. */
@@ -48,12 +63,21 @@ export function posix(p: string): string {
 export function discoverUnits(checker: ts.TypeChecker, files: ts.SourceFile[], paths: Paths): FeatureUnits {
   const units: Unit[] = [];
   const stateKeys = new Map<ts.Node, string>();
-  const components: ts.ClassDeclaration[] = [];
+  const components: Component[] = [];
 
   for (const sf of files) {
     const featurePath = posix(path.relative(paths.featureDir, sf.fileName));
     const file = posix(path.relative(paths.projectDir, sf.fileName));
-    const make = (qualified: string, kind: NodeKind, group: string, decls: ts.Node[], body: ts.Node, fpNode: ts.Node, sigNode: ts.Node, store?: string): Unit => ({
+    const make = (
+      qualified: string,
+      kind: NodeKind,
+      group: string,
+      decls: ts.Node[],
+      body: ts.Node,
+      fpNode: ts.Node,
+      sigNode: ts.Node,
+      store?: string,
+    ): Unit => ({
       id: `${featurePath}#${qualified}`,
       kind,
       name: qualified,
@@ -71,8 +95,9 @@ export function discoverUnits(checker: ts.TypeChecker, files: ts.SourceFile[], p
       if (ts.isCallExpression(node) && isNgrx(checker, node.expression, 'signalStore')) {
         units.push(...storeUnits(checker, node, make, stateKeys));
       } else if (ts.isClassDeclaration(node) && node.name) {
-        units.push(...classUnits(node, make));
-        if (inlineTemplate(node)) components.push(node);
+        units.push(...classUnits(node, node.name.text, make));
+        const template = componentTemplate(node);
+        if (template) components.push({ cls: node, name: node.name.text, template });
       }
       ts.forEachChild(node, visit);
     };
@@ -96,9 +121,23 @@ export function discoverUnits(checker: ts.TypeChecker, files: ts.SourceFile[], p
   return { units, stateKeys, components };
 }
 
-type Make = (qualified: string, kind: NodeKind, group: string, decls: ts.Node[], body: ts.Node, fpNode: ts.Node, sigNode: ts.Node, store?: string) => Unit;
+type Make = (
+  qualified: string,
+  kind: NodeKind,
+  group: string,
+  decls: ts.Node[],
+  body: ts.Node,
+  fpNode: ts.Node,
+  sigNode: ts.Node,
+  store?: string,
+) => Unit;
 
-function storeUnits(checker: ts.TypeChecker, call: ts.CallExpression, make: Make, stateKeys: Map<ts.Node, string>): Unit[] {
+function storeUnits(
+  checker: ts.TypeChecker,
+  call: ts.CallExpression,
+  make: Make,
+  stateKeys: Map<ts.Node, string>,
+): Unit[] {
   const store = storeName(call);
   const units: Unit[] = [];
   for (const arg of call.arguments) {
@@ -109,19 +148,19 @@ function storeUnits(checker: ts.TypeChecker, call: ts.CallExpression, make: Make
 
     if (feature === 'withState') {
       for (const prop of checker.getTypeAtLocation(input).getProperties()) {
-        for (const decl of prop.declarations ?? []) if (!stateKeys.has(decl)) stateKeys.set(decl, `${store}.${prop.name}`);
+        for (const decl of prop.declarations ?? [])
+          if (!stateKeys.has(decl)) stateKeys.set(decl, `${store}.${prop.name}`);
       }
     } else if (feature === 'withMethods' || feature === 'withComputed' || feature === 'withHooks') {
-      const publicKind: NodeKind = feature === 'withMethods' ? 'store-method' : feature === 'withComputed' ? 'store-computed' : 'store-hook';
+      const publicKind: NodeKind =
+        feature === 'withMethods' ? 'store-method' : feature === 'withComputed' ? 'store-computed' : 'store-hook';
       const localKind: NodeKind = feature === 'withComputed' ? 'store-computed' : 'store-helper';
       const { returned, locals } = factoryParts(input);
       const byLocal = new Map<ts.Node, Unit>();
-      for (const local of locals) {
-        const name = nameText(local.name)!;
-        const value = ts.isFunctionDeclaration(local) ? local : skipOuter(local.initializer!);
-        const unit = make(`${store}.(${name})`, localKind, store, [local], bodyOf(value), value, local, store);
+      for (const { decl, name, value } of locals) {
+        const unit = make(`${store}.(${name})`, localKind, store, [decl], bodyOf(value), value, decl, store);
         unit.isSignal = isSignalValue(value);
-        byLocal.set(local, unit);
+        byLocal.set(decl, unit);
         units.push(unit);
       }
       for (const member of returned?.properties ?? []) {
@@ -133,10 +172,13 @@ function storeUnits(checker: ts.TypeChecker, call: ts.CallExpression, make: Make
           : ts.isPropertyAssignment(member) && ts.isIdentifier(skipOuter(member.initializer))
             ? (skipOuter(member.initializer) as ts.Identifier)
             : undefined;
-        const local = target && localDeclaration(checker, target, byLocal);
-        if (local) {
-          const unit = byLocal.get(local)!;
-          Object.assign(unit, { id: unit.id.replace(/#.*$/, `#${store}.${name}`), name: `${store}.${name}`, kind: publicKind });
+        const unit = target && localUnit(checker, target, byLocal);
+        if (unit) {
+          Object.assign(unit, {
+            id: unit.id.replace(/#.*$/, `#${store}.${name}`),
+            name: `${store}.${name}`,
+            kind: publicKind,
+          });
           unit.decls.push(member);
         } else if (ts.isMethodDeclaration(member) && member.body) {
           units.push(make(`${store}.${name}`, publicKind, store, [member], member, member, member, store));
@@ -152,14 +194,17 @@ function storeUnits(checker: ts.TypeChecker, call: ts.CallExpression, make: Make
   return units;
 }
 
-function classUnits(cls: ts.ClassDeclaration, make: Make): Unit[] {
-  const className = cls.name!.text;
+function classUnits(cls: ts.ClassDeclaration, className: string, make: Make): Unit[] {
   const units: Unit[] = [];
   for (const member of cls.members) {
-    if ((ts.isMethodDeclaration(member) || ts.isGetAccessorDeclaration(member) || ts.isSetAccessorDeclaration(member)) && member.body) {
+    if (
+      (ts.isMethodDeclaration(member) || ts.isGetAccessorDeclaration(member) || ts.isSetAccessorDeclaration(member)) &&
+      member.body
+    ) {
       const name = nameText(member.name);
       const prefix = ts.isGetAccessorDeclaration(member) ? 'get ' : ts.isSetAccessorDeclaration(member) ? 'set ' : '';
-      if (name) units.push(make(`${className}.${prefix}${name}`, 'class-method', className, [member], member, member, member));
+      if (name)
+        units.push(make(`${className}.${prefix}${name}`, 'class-method', className, [member], member, member, member));
     } else if (ts.isConstructorDeclaration(member) && member.body) {
       units.push(make(`${className}.constructor`, 'class-method', className, [member], member, member, member));
     } else if (ts.isPropertyDeclaration(member) && member.initializer) {
@@ -176,7 +221,11 @@ function classUnits(cls: ts.ClassDeclaration, make: Make): Unit[] {
 }
 
 function isFunctionValue(value: ts.Expression): boolean {
-  return ts.isArrowFunction(value) || ts.isFunctionExpression(value) || (ts.isCallExpression(value) && UNIT_CALLS.has(calleeName(value)));
+  return (
+    ts.isArrowFunction(value) ||
+    ts.isFunctionExpression(value) ||
+    (ts.isCallExpression(value) && UNIT_CALLS.has(calleeName(value)))
+  );
 }
 
 function isSignalValue(value: ts.Node): boolean {
@@ -192,21 +241,33 @@ function bodyOf(value: ts.Node): ts.Node {
   return value;
 }
 
+/** A function a feature factory declares before returning its object. */
+interface Local {
+  decl: ts.VariableDeclaration | ts.FunctionDeclaration;
+  name: string;
+  /** The function, or the call that makes one, e.g. `rxMethod(…)`. */
+  value: ts.Node;
+}
+
 /** The object a feature factory returns, and the function-valued locals it declares first. */
-function factoryParts(input: ts.Expression): { returned?: ts.ObjectLiteralExpression; locals: (ts.VariableDeclaration | ts.FunctionDeclaration)[] } {
+function factoryParts(input: ts.Expression): { returned?: ts.ObjectLiteralExpression; locals: Local[] } {
   if (ts.isObjectLiteralExpression(input)) return { returned: input, locals: [] };
   if (!ts.isArrowFunction(input) && !ts.isFunctionExpression(input)) return { locals: [] };
   if (!ts.isBlock(input.body)) {
     const body = skipOuter(input.body);
     return { returned: ts.isObjectLiteralExpression(body) ? body : undefined, locals: [] };
   }
-  const locals: (ts.VariableDeclaration | ts.FunctionDeclaration)[] = [];
+  const locals: Local[] = [];
   let returned: ts.ObjectLiteralExpression | undefined;
   for (const statement of input.body.statements) {
-    if (ts.isFunctionDeclaration(statement) && statement.name && statement.body) locals.push(statement);
+    if (ts.isFunctionDeclaration(statement) && statement.name && statement.body) {
+      locals.push({ decl: statement, name: statement.name.text, value: statement });
+    }
     if (ts.isVariableStatement(statement)) {
       for (const decl of statement.declarationList.declarations) {
-        if (ts.isIdentifier(decl.name) && decl.initializer && isFunctionValue(skipOuter(decl.initializer))) locals.push(decl);
+        const value = decl.initializer && skipOuter(decl.initializer);
+        if (ts.isIdentifier(decl.name) && value && isFunctionValue(value))
+          locals.push({ decl, name: decl.name.text, value });
       }
     }
     if (ts.isReturnStatement(statement) && statement.expression) {
@@ -217,11 +278,16 @@ function factoryParts(input: ts.Expression): { returned?: ts.ObjectLiteralExpres
   return { returned, locals };
 }
 
-function localDeclaration(checker: ts.TypeChecker, id: ts.Identifier, byLocal: Map<ts.Node, Unit>): ts.Node | undefined {
+/** The unit of the local an identifier refers to, if it is one. */
+function localUnit(checker: ts.TypeChecker, id: ts.Identifier, byLocal: Map<ts.Node, Unit>): Unit | undefined {
   const symbol = ts.isShorthandPropertyAssignment(id.parent)
     ? checker.getShorthandAssignmentValueSymbol(id.parent)
     : checker.getSymbolAtLocation(id);
-  return symbol?.declarations?.find((d) => byLocal.has(d));
+  for (const decl of symbol?.declarations ?? []) {
+    const unit = byLocal.get(decl);
+    if (unit) return unit;
+  }
+  return undefined;
 }
 
 function storeName(call: ts.CallExpression): string {
@@ -242,19 +308,21 @@ export function isNgrx(checker: ts.TypeChecker, expression: ts.Expression, name:
   return !!symbol?.declarations?.some((d) => posix(d.getSourceFile().fileName).includes('/@ngrx/signals/'));
 }
 
-/** The `template:` string of a `@Component`, if inline. */
-export function inlineTemplate(cls: ts.ClassDeclaration): { text: string; node: ts.Node; selector?: string; templateUrl: boolean } | undefined {
+/** A `@Component`'s template and selector. */
+export function componentTemplate(cls: ts.ClassDeclaration): ComponentTemplate | undefined {
   for (const decorator of ts.getDecorators(cls) ?? []) {
     const call = decorator.expression;
     if (!ts.isCallExpression(call) || calleeName(call) !== 'Component') continue;
     const meta = call.arguments[0];
     if (!meta || !ts.isObjectLiteralExpression(meta)) continue;
     const prop = (key: string) =>
-      meta.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && nameText(p.name) === key)?.initializer;
+      meta.properties.find((p): p is ts.PropertyAssignment => ts.isPropertyAssignment(p) && nameText(p.name) === key)
+        ?.initializer;
     const template = prop('template');
     const selector = prop('selector');
     const selectorText = selector && ts.isStringLiteralLike(selector) ? selector.text : undefined;
-    if (template && ts.isStringLiteralLike(template)) return { text: template.text, node: template, selector: selectorText, templateUrl: false };
+    if (template && ts.isStringLiteralLike(template))
+      return { text: template.text, node: template, selector: selectorText, templateUrl: false };
     if (prop('templateUrl')) return { text: '', node: meta, selector: selectorText, templateUrl: true };
   }
   return undefined;

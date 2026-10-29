@@ -1,8 +1,8 @@
 import path from 'node:path';
 import ts from 'typescript';
-import { GraphNode } from '../graph/model';
+import type { GraphNode } from '../graph/model';
 import { calleeName, lineOf, nameText, signatureOf, skipOuter } from './ts-utils';
-import { FeatureUnits, Paths, Unit, isNgrx, posix } from './units';
+import { type FeatureUnits, isNgrx, type Paths, posix, type Unit } from './units';
 
 export type Target =
   | { kind: 'unit'; unit: Unit }
@@ -43,8 +43,12 @@ export class Resolver {
     const receiver = ts.isPropertyAccessExpression(callee) ? this.symbolOf(callee.expression) : undefined;
     const symbol = this.aliased(this.checker.getSymbolAtLocation(nameNode));
     if (!symbol) {
-      const type = ts.isPropertyAccessExpression(callee) ? this.checker.getTypeAtLocation(callee.expression) : undefined;
-      return type && type.flags & ts.TypeFlags.Any ? { kind: 'unresolved', text: callee.getText() } : { kind: 'ignore' };
+      const type = ts.isPropertyAccessExpression(callee)
+        ? this.checker.getTypeAtLocation(callee.expression)
+        : undefined;
+      return type && type.flags & ts.TypeFlags.Any
+        ? { kind: 'unresolved', text: callee.getText() }
+        : { kind: 'ignore' };
     }
     return this.symbol(symbol, receiver, nameNode.text);
   }
@@ -64,7 +68,7 @@ export class Resolver {
       symbol = type.getProperty(name);
       if (!symbol) return { kind: 'ignore' };
     }
-    return this.symbol(symbol!, receiver, chain[chain.length - 1]);
+    return symbol ? this.symbol(symbol, receiver, chain[chain.length - 1]) : { kind: 'ignore' };
   }
 
   private symbol(symbol: ts.Symbol, receiver: ts.Symbol | undefined, name: string): Target {
@@ -85,13 +89,15 @@ export class Resolver {
     if (!decl) return { kind: 'ignore' };
 
     const sf = decl.getSourceFile();
-    if (this.program.isSourceFileDefaultLibrary(sf) || this.program.isSourceFileFromExternalLibrary(sf)) return this.library(symbol, decl);
+    if (this.program.isSourceFileDefaultLibrary(sf) || this.program.isSourceFileFromExternalLibrary(sf))
+      return this.library(symbol, decl);
     const file = posix(sf.fileName);
     if (file.includes('/node_modules/')) return this.library(symbol, decl);
     if (isInside(this.paths.featureDir, sf.fileName)) {
       // Something local, like a variable inside the same function. Calls through a parameter
       // can't be followed.
-      const throughParameter = ts.isParameter(decl) || (ts.isBindingElement(decl) && !!ts.findAncestor(decl, ts.isParameter));
+      const throughParameter =
+        ts.isParameter(decl) || (ts.isBindingElement(decl) && !!ts.findAncestor(decl, ts.isParameter));
       return throughParameter ? { kind: 'unresolved', text: name } : { kind: 'ignore' };
     }
     return this.boundary(symbol, decl, receiver, posix(path.relative(this.paths.projectDir, sf.fileName)));
@@ -106,11 +112,19 @@ export class Resolver {
   }
 
   private boundary(symbol: ts.Symbol, decl: ts.Node, receiver: ts.Symbol | undefined, file: string): Target {
-    const container = ts.findAncestor(decl.parent, (n) => ts.isClassLike(n) || ts.isInterfaceDeclaration(n) || ts.isVariableDeclaration(n));
+    const container = ts.findAncestor(
+      decl.parent,
+      (n) => ts.isClassLike(n) || ts.isInterfaceDeclaration(n) || ts.isVariableDeclaration(n),
+    );
     const owner = container && nameText((container as ts.NamedDeclaration).name as ts.PropertyName);
     let qualified = owner ? `${owner}.${symbol.name}` : symbol.name;
     let via: GraphNode['via'];
-    if (container && ts.isClassLike(container) && ts.getCombinedModifierFlags(container as ts.Declaration) & ts.ModifierFlags.Abstract) via = 'abstract';
+    if (
+      container &&
+      ts.isClassLike(container) &&
+      ts.getCombinedModifierFlags(container as ts.Declaration) & ts.ModifierFlags.Abstract
+    )
+      via = 'abstract';
     if (container && ts.isInterfaceDeclaration(container)) via = 'interface';
 
     const token = receiver && this.injectionToken(receiver);
@@ -142,7 +156,12 @@ export class Resolver {
   /** `analytics = inject(ANALYTICS)` → the `ANALYTICS` declaration, if it's an `InjectionToken`. */
   private injectionToken(receiver: ts.Symbol): ts.VariableDeclaration | undefined {
     const decl = receiver.valueDeclaration;
-    if (!decl || !(ts.isVariableDeclaration(decl) || ts.isParameter(decl) || ts.isPropertyDeclaration(decl)) || !decl.initializer) return undefined;
+    if (
+      !decl ||
+      !(ts.isVariableDeclaration(decl) || ts.isParameter(decl) || ts.isPropertyDeclaration(decl)) ||
+      !decl.initializer
+    )
+      return undefined;
     const init = skipOuter(decl.initializer);
     if (!ts.isCallExpression(init) || calleeName(init) !== 'inject' || !init.arguments[0]) return undefined;
     const token = this.aliased(this.symbolOf(init.arguments[0]))?.valueDeclaration;
@@ -159,7 +178,9 @@ export class Resolver {
     const init = decl.initializer && skipOuter(decl.initializer);
     const isOutput =
       (init && ts.isCallExpression(init) && ['output', 'outputFromObservable'].includes(calleeName(init))) ||
-      (ts.getDecorators(decl) ?? []).some((d) => ts.isCallExpression(d.expression) && calleeName(d.expression) === 'Output');
+      (ts.getDecorators(decl) ?? []).some(
+        (d) => ts.isCallExpression(d.expression) && calleeName(d.expression) === 'Output',
+      );
     const name = nameText(decl.name);
     return isOutput && name ? { kind: 'emit', cls: decl.parent, output: name } : undefined;
   }
@@ -180,8 +201,9 @@ export function isInside(dir: string, file: string): boolean {
 }
 
 function packageOf(file: string): string | undefined {
-  const rest = file.split('/node_modules/').pop()!;
-  if (rest === file) return undefined;
+  const at = file.lastIndexOf('/node_modules/');
+  if (at < 0) return undefined;
+  const rest = file.slice(at + '/node_modules/'.length);
   const parts = rest.split('/');
   return parts[0].startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0];
 }

@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { Source, diffDiagrams, graphDiagrams, graphOf } from './api';
+import { graphDiagrams, graphOf, type Source } from './api';
 import { diffGraphs } from './diff/diff';
+import { summarize } from './diff/sections';
 import { DEFAULT_HIDE } from './extract/resolve';
 import { serialize } from './graph/canonical';
 import { DEFAULT_SLICE } from './graph/slice';
@@ -50,30 +51,47 @@ function main(argv: string[]): number {
   if (command === 'graph') {
     const source: Source = flags.rev ? { rev: flags.rev, install: flags.install } : { dir: flags.dir ?? '.' };
     const { graph, warnings } = graphOf(source, analyze);
-    warnings.forEach((w) => console.warn(`warning: ${w}`));
-    const views = graphDiagrams(graph, flags.entry, { depth: number('depth', 3), up: number('up', DEFAULT_SLICE.up), budget: number('budget', DEFAULT_SLICE.budget) });
+    for (const w of warnings) console.warn(`warning: ${w}`);
+    const views = graphDiagrams(graph, flags.entry, {
+      depth: number('depth', 3),
+      up: number('up', DEFAULT_SLICE.up),
+      budget: number('budget', DEFAULT_SLICE.budget),
+    });
     const label = flags.rev ?? flags.dir ?? 'working tree';
     const out = path.resolve(flags.out ?? 'callgraph');
     mkdirSync(out, { recursive: true });
     writeFileSync(path.join(out, 'graph.json'), serialize(graph));
-    writeFileSync(path.join(out, 'diagrams.md'), views.map((v) => `## ${v.title}\n\n\`\`\`mermaid\n${mermaid(v)}\`\`\`\n`).join('\n'));
+    writeFileSync(
+      path.join(out, 'diagrams.md'),
+      views.map((v) => `## ${v.title}\n\n\`\`\`mermaid\n${mermaid(v)}\`\`\`\n`).join('\n'),
+    );
     writeFileSync(path.join(out, 'index.html'), graphPage(graph, views, label));
-    console.log(`${graph.nodes.length} nodes, ${graph.edges.length} edges, ${views.length} diagrams. Wrote ${path.relative(process.cwd(), out) || '.'}/`);
+    console.log(
+      `${graph.nodes.length} nodes, ${graph.edges.length} edges, ${views.length} diagrams. Wrote ${path.relative(process.cwd(), out) || '.'}/`,
+    );
     return 0;
   }
 
   if (command === 'diff') {
-    const base: Source | undefined = flags.base ? { rev: flags.base, install: flags.install } : flags['base-dir'] ? { dir: flags['base-dir'] } : undefined;
+    const base: Source | undefined = flags.base
+      ? { rev: flags.base, install: flags.install }
+      : flags['base-dir']
+        ? { dir: flags['base-dir'] }
+        : undefined;
     if (!base) return usage('--base or --base-dir is required');
     const head: Source = flags.head ? { rev: flags.head, install: flags.install } : { dir: flags['head-dir'] ?? '.' };
     const baseResult = graphOf(base, analyze);
     const headResult = graphOf(head, analyze);
-    [...baseResult.warnings, ...headResult.warnings].forEach((w) => console.warn(`warning: ${w}`));
+    for (const w of [...baseResult.warnings, ...headResult.warnings]) console.warn(`warning: ${w}`);
 
     const diff = diffGraphs(baseResult.graph, headResult.graph);
-    const views = diffDiagrams(diff, { depth: number('depth', DEFAULT_SLICE.depth), up: number('up', DEFAULT_SLICE.up), budget: number('budget', DEFAULT_SLICE.budget) });
+    const summary = summarize(baseResult.graph, headResult.graph, diff, {
+      depth: number('depth', DEFAULT_SLICE.depth),
+      up: number('up', DEFAULT_SLICE.up),
+      budget: number('budget', DEFAULT_SLICE.budget),
+    });
     const labels = {
-      base: flags['base-label'] ?? flags.base ?? flags['base-dir']!,
+      base: flags['base-label'] ?? flags.base ?? flags['base-dir'] ?? 'base',
       head: flags['head-label'] ?? flags.head ?? flags['head-dir'] ?? 'working tree',
       reportUrl: flags['report-url'],
     };
@@ -81,11 +99,17 @@ function main(argv: string[]): number {
     mkdirSync(out, { recursive: true });
     writeFileSync(path.join(out, 'base.json'), serialize(baseResult.graph));
     writeFileSync(path.join(out, 'head.json'), serialize(headResult.graph));
-    writeFileSync(path.join(out, 'diff.json'), JSON.stringify(diff, null, 2) + '\n');
-    writeFileSync(path.join(out, 'comment.md'), diffComment(diff, views, labels, { ...DEFAULT_COMMENT, inlineLimit: number('inline-limit', DEFAULT_COMMENT.inlineLimit) }));
-    writeFileSync(path.join(out, 'index.html'), diffPage(diff, views, labels));
-    const changed = diff.nodes.filter((n) => n.class !== 'unchanged').length;
-    console.log(`${changed} nodes changed, ${views.length} diagrams. Wrote ${path.relative(process.cwd(), out) || '.'}/`);
+    writeFileSync(path.join(out, 'diff.json'), `${JSON.stringify(diff, null, 2)}\n`);
+    const feature = diff.head.feature;
+    writeFileSync(
+      path.join(out, 'comment.md'),
+      diffComment(feature, summary, labels, { inlineLimit: number('inline-limit', DEFAULT_COMMENT.inlineLimit) }),
+    );
+    writeFileSync(path.join(out, 'index.html'), diffPage(feature, summary, labels, diff.head.analyzer));
+    // The count comes first, for scripts that read it.
+    console.log(
+      `${summary.changes.length} changes in ${summary.sections.length} diagrams. Wrote ${path.relative(process.cwd(), out) || '.'}/`,
+    );
     return 0;
   }
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { diffGraphs } from '../src/diff/diff';
-import { CallSite, Graph, GraphEdge, GraphNode } from '../src/graph/model';
+import type { CallSite, Graph, GraphEdge, GraphNode } from '../src/graph/model';
 
 const fn = (id: string, extra: Partial<GraphNode> = {}): GraphNode => ({
   id,
@@ -18,8 +18,14 @@ const fn = (id: string, extra: Partial<GraphNode> = {}): GraphNode => ({
 });
 const site = (within: string[] = [], branch: string[] = []): CallSite => ({ within, piped: [], branch });
 const call = (from: string, to: string, sites = [site()]): GraphEdge => ({ from, to, kind: 'call', sites });
-const graph = (nodes: GraphNode[], edges: GraphEdge[]): Graph => ({ version: 1, inputs: { feature: 'f', analyzer: 'test' }, nodes, edges });
-const classOf = (base: Graph, head: Graph) => Object.fromEntries(diffGraphs(base, head).nodes.map((n) => [n.id, n.class]));
+const graph = (nodes: GraphNode[], edges: GraphEdge[]): Graph => ({
+  version: 1,
+  inputs: { feature: 'f', analyzer: 'test' },
+  nodes,
+  edges,
+});
+const classOf = (base: Graph, head: Graph) =>
+  Object.fromEntries(diffGraphs(base, head).nodes.map((n) => [n.id, n.class]));
 
 describe('diffGraphs', () => {
   it('reports nothing for identical graphs', () => {
@@ -29,7 +35,10 @@ describe('diffGraphs', () => {
 
   it('separates a new callee from a body-only change', () => {
     const base = graph([fn('a'), fn('b'), fn('c')], [call('a', 'b')]);
-    const head = graph([fn('a', { fingerprint: 'x' }), fn('b', { fingerprint: 'y' }), fn('c')], [call('a', 'b'), call('a', 'c')]);
+    const head = graph(
+      [fn('a', { fingerprint: 'x' }), fn('b', { fingerprint: 'y' }), fn('c')],
+      [call('a', 'b'), call('a', 'c')],
+    );
     assert.deepEqual(classOf(base, head), { a: 'structural', b: 'implementation', c: 'unchanged' });
   });
 
@@ -59,16 +68,21 @@ describe('diffGraphs', () => {
     const base = graph([fn('load', { fingerprint: 'same' }), fn('api')], [call('load', 'api')]);
     const head = graph([fn('fetch', { fingerprint: 'same' }), fn('api')], [call('fetch', 'api')]);
     const diff = diffGraphs(base, head);
-    const fetch = diff.nodes.find((n) => n.id === 'fetch')!;
+    const fetch = diff.nodes.find((n) => n.id === 'fetch');
+    assert.ok(fetch);
     assert.equal(fetch.class, 'renamed');
     assert.equal(fetch.renamedFrom, 'load');
-    assert.deepEqual(diff.edges.map((e) => e.status), ['unchanged']);
+    assert.deepEqual(
+      diff.edges.map((e) => e.status),
+      ['unchanged'],
+    );
   });
 
   it('pairs a renamed method by its callees when the body changed too', () => {
     const base = graph([fn('old'), fn('x'), fn('y')], [call('old', 'x'), call('old', 'y')]);
     const head = graph([fn('new', { fingerprint: 'other' }), fn('x'), fn('y')], [call('new', 'x'), call('new', 'y')]);
-    const change = diffGraphs(base, head).nodes.find((n) => n.id === 'new')!;
+    const change = diffGraphs(base, head).nodes.find((n) => n.id === 'new');
+    assert.ok(change);
     assert.equal(change.renamedFrom, 'old');
     assert.equal(change.class, 'implementation');
   });

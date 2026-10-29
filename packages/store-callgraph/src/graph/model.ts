@@ -25,6 +25,21 @@ export type NodeKind =
   /** A call the checker could not resolve, e.g. through an untyped parameter. */
   | 'unresolved';
 
+/** The order kinds are listed and drawn in: the store's API first, outside code last. */
+export const KIND_ORDER: NodeKind[] = [
+  'store-method',
+  'store-hook',
+  'store-computed',
+  'store-helper',
+  'class-method',
+  'class-field',
+  'template-render',
+  'template-handler',
+  'function',
+  'boundary',
+  'unresolved',
+];
+
 export type EdgeKind =
   /** A direct call. */
   | 'call'
@@ -93,6 +108,13 @@ export function siteKey(site: CallSite): string {
 
 export function edgeKey(edge: Pick<GraphEdge, 'from' | 'to' | 'kind'>): string {
   return `${edge.from} ${edge.kind} ${edge.to}`;
+}
+
+/** Adds `value` to the list at `key`, creating the list if needed. */
+export function append<K, V>(map: Map<K, V[]>, key: K, value: V): void {
+  const list = map.get(key);
+  if (list) list.push(value);
+  else map.set(key, [value]);
 }
 
 /** Code-unit comparison: the same order on every machine and locale. */

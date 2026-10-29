@@ -1,31 +1,31 @@
+import path from 'node:path';
 import {
-  AST,
-  Call,
-  CssSelector,
+  type AST,
+  type Call,
+  type CssSelector,
+  createCssSelectorFromNode,
   ImplicitReceiver,
   PropertyRead,
-  RecursiveAstVisitor,
-  SafeCall,
-  SafePropertyRead,
-  TmplAstBoundAttribute,
-  TmplAstBoundEvent,
-  TmplAstBoundText,
-  TmplAstElement,
-  TmplAstForLoopBlock,
-  TmplAstIfBlockBranch,
-  TmplAstLetDeclaration,
-  TmplAstRecursiveVisitor,
-  TmplAstSwitchBlock,
-  TmplAstSwitchBlockCase,
-  TmplAstTemplate,
-  createCssSelectorFromNode,
   parseTemplate,
+  RecursiveAstVisitor,
+  type SafeCall,
+  SafePropertyRead,
+  type TmplAstBoundAttribute,
+  type TmplAstBoundEvent,
+  type TmplAstBoundText,
+  TmplAstElement,
+  type TmplAstForLoopBlock,
+  type TmplAstIfBlockBranch,
+  type TmplAstLetDeclaration,
+  TmplAstRecursiveVisitor,
+  type TmplAstSwitchBlock,
+  type TmplAstSwitchBlockCase,
+  type TmplAstTemplate,
   tmplAstVisitAll,
 } from '@angular/compiler';
-import path from 'node:path';
-import ts from 'typescript';
 import { hash, lineOf } from './ts-utils';
-import { Paths, Unit, inlineTemplate, posix } from './units';
+import type { Component, Paths, Unit } from './units';
+import { posix } from './units';
 
 /** A call in a template, as a chain of property names from the component: `store.setValue`. */
 export interface TemplateCall {
@@ -46,10 +46,8 @@ export interface TemplateInfo {
   warnings: string[];
 }
 
-export function analyzeTemplate(cls: ts.ClassDeclaration, paths: Paths): TemplateInfo {
+export function analyzeTemplate({ cls, name: className, template }: Component, paths: Paths): TemplateInfo {
   const info: TemplateInfo = { units: [], calls: [], elements: [], warnings: [] };
-  const template = inlineTemplate(cls)!;
-  const className = cls.name!.text;
   const sf = cls.getSourceFile();
   const featurePath = posix(path.relative(paths.featureDir, sf.fileName));
   const file = posix(path.relative(paths.projectDir, sf.fileName));
@@ -115,7 +113,8 @@ export function analyzeTemplate(cls: ts.ClassDeclaration, paths: Paths): Templat
       super.visitTemplate(node);
     }
     override visitBoundEvent(event: TmplAstBoundEvent) {
-      collect(event.handler, handlerOf.get(event)!);
+      const handler = handlerOf.get(event);
+      if (handler) collect(event.handler, handler);
     }
     override visitBoundAttribute(attribute: TmplAstBoundAttribute) {
       collect(attribute.value, render);

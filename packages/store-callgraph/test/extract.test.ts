@@ -43,7 +43,10 @@ describe('extract', () => {
   });
 
   it("connects a child's output.emit() to the parent's handler for that output", () => {
-    const e = edge('counter.component.ts#CounterButtonComponent@template:button(click)', 'counter.component.ts#CounterComponent@template:app-counter-button(pressed)');
+    const e = edge(
+      'counter.component.ts#CounterButtonComponent@template:button(click)',
+      'counter.component.ts#CounterComponent@template:app-counter-button(pressed)',
+    );
     assert.equal(e?.kind, 'emit');
   });
 
@@ -56,6 +59,8 @@ describe('extract', () => {
   });
 
   it('warns about templates it cannot read', () => {
-    assert.deepEqual(warnings, ["src/feature/counter.component.ts: LegacyComponent uses templateUrl, which isn't analyzed yet"]);
+    assert.deepEqual(warnings, [
+      "src/feature/counter.component.ts: LegacyComponent uses templateUrl, which isn't analyzed yet",
+    ]);
   });
 });

@@ -22,7 +22,7 @@ export class CounterButtonComponent {
 })
 export class CounterComponent {
   protected readonly store = inject(CounterStore);
-  private readonly logOnChange = effect(() => console.debug(this.store.count()));
+  protected readonly logOnChange = effect(() => console.debug(this.store.count()));
 
   protected onReset(): void {
     this.store.reset();

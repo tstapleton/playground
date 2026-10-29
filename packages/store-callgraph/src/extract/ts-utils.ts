@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
-import { CallSite } from '../graph/model';
+import type { CallSite } from '../graph/model';
 
 export function hash(text: string): string {
   return createHash('sha256').update(text).digest('hex').slice(0, 16);
@@ -48,7 +48,12 @@ export function calleeName(call: ts.CallExpression | ts.NewExpression): string {
 /** Strips parentheses, `!`, `as` and `satisfies`. */
 export function skipOuter(node: ts.Expression): ts.Expression {
   for (;;) {
-    if (ts.isParenthesizedExpression(node) || ts.isNonNullExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) {
+    if (
+      ts.isParenthesizedExpression(node) ||
+      ts.isNonNullExpression(node) ||
+      ts.isAsExpression(node) ||
+      ts.isSatisfiesExpression(node)
+    ) {
       node = node.expression;
     } else {
       return node;
@@ -63,7 +68,8 @@ export function lineOf(node: ts.Node): number {
 
 export function nameText(name: ts.PropertyName | ts.BindingName | undefined): string | undefined {
   if (!name) return undefined;
-  if (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) return name.text;
+  if (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name))
+    return name.text;
   return undefined;
 }
 
@@ -76,7 +82,11 @@ export function siteOf(call: ts.CallExpression, root: ts.Node): CallSite {
   const branch: string[] = [];
   for (let n: ts.Node = call; n !== root && n.parent; n = n.parent) {
     const p = n.parent;
-    if (ts.isFunctionLike(n) && (ts.isCallExpression(p) || ts.isNewExpression(p)) && p.arguments?.includes(n as ts.Expression)) {
+    if (
+      ts.isFunctionLike(n) &&
+      (ts.isCallExpression(p) || ts.isNewExpression(p)) &&
+      p.arguments?.includes(n as ts.Expression)
+    ) {
       within.unshift(calleeName(p));
     }
     const b = branchOf(n, p);
@@ -106,10 +116,21 @@ function branchOf(n: ts.Node, p: ts.Node): string | undefined {
 function pipedOnto(call: ts.CallExpression): string[] {
   let source: ts.Expression = call;
   const p = call.parent;
-  const fn = ts.isArrowFunction(p) && p.body === call ? p : ts.isReturnStatement(p) ? ts.findAncestor(p, ts.isFunctionLike) : undefined;
+  const fn =
+    ts.isArrowFunction(p) && p.body === call
+      ? p
+      : ts.isReturnStatement(p)
+        ? ts.findAncestor(p, ts.isFunctionLike)
+        : undefined;
   if (fn && ts.isCallExpression(fn.parent) && calleeName(fn.parent) === 'defer') source = fn.parent;
   const access = source.parent;
-  if (access && ts.isPropertyAccessExpression(access) && access.name.text === 'pipe' && ts.isCallExpression(access.parent) && access.parent.expression === access) {
+  if (
+    access &&
+    ts.isPropertyAccessExpression(access) &&
+    access.name.text === 'pipe' &&
+    ts.isCallExpression(access.parent) &&
+    access.parent.expression === access
+  ) {
     return access.parent.arguments.map((a) => (ts.isCallExpression(a) ? calleeName(a) : '?'));
   }
   return [];
