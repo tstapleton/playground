@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 
 out="${1:-examples/callgraph-diff}"
 
-node packages/store-callgraph/bin/store-callgraph.mjs diff \
+npx tsx packages/store-callgraph/src/cli.ts diff \
   --feature src/app/features/dynamic-form \
   --base-dir fixtures/base \
   --head-dir fixtures/pr \

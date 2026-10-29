@@ -5,10 +5,10 @@ beyond the line diff: runtime sequence diagrams from integration tests, and stat
 
 | Path | What |
 |---|---|
-| [`packages/signal-trace`](packages/signal-trace) | The tool: records traces in Jest, renders them with Pele, diffs two runs |
+| [`packages/signal-trace`](packages/signal-trace) | The first version of [plotline](https://github.com/tstapleton/plotline), which has moved to its own repository. The fixtures still use it |
 | [`fixtures/base`](fixtures/base) | Demo feature: a config-driven form on Angular 20 and NgRx SignalStore |
 | [`fixtures/pr`](fixtures/pr) | The same feature with a pull request's worth of changes |
-| [`packages/store-callgraph`](packages/store-callgraph) | Static call graphs of a feature, and diffs of them between two revisions |
+| [`packages/store-callgraph`](packages/store-callgraph) | Static call graphs of a feature, diffed between two revisions in plotline's style |
 | [`docs/call-graph-proposal.md`](docs/call-graph-proposal.md) | The design behind `store-callgraph` |
 | [`examples/callgraph-diff`](examples/callgraph-diff) | `store-callgraph`'s diff between the two: [PR comment](examples/callgraph-diff/comment.md) and [HTML report](examples/callgraph-diff/index.html) |
 | [`examples/trace-diff`](examples/trace-diff) | The diff between the two: [PR comment](examples/trace-diff/comment.md) and [HTML report](examples/trace-diff/index.html) |
