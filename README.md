@@ -8,6 +8,7 @@ diffing them on pull requests.
 | [`packages/signal-trace`](packages/signal-trace) | The tool: records traces in Jest, renders them with Pele, diffs two runs |
 | [`fixtures/base`](fixtures/base) | Demo feature: a config-driven form on Angular 20 and NgRx SignalStore |
 | [`fixtures/pr`](fixtures/pr) | The same feature with a pull request's worth of changes |
+| [`docs/call-graph-proposal.md`](docs/call-graph-proposal.md) | Proposal: static call graphs of SignalStore features, and diffing them |
 | [`examples/trace-diff`](examples/trace-diff) | The diff between the two: [PR comment](examples/trace-diff/comment.md) and [HTML report](examples/trace-diff/index.html) |
 
 ```bash
